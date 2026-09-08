@@ -31,6 +31,14 @@ import { getVerseCandidates, VerseResult } from "@/data/bible";
 import { notesStore } from "@/data/notesStore";
 import { NoteBlock, newId, SermonNote } from "@/types/note";
 
+function isBlankNote(note: SermonNote): boolean {
+  return (
+    !note.title.trim() &&
+    !note.church?.trim() &&
+    note.blocks.every((b) => b.type === "text" && !b.text.trim())
+  );
+}
+
 function emptyNote(id: string): SermonNote {
   const now = new Date().toISOString();
   return {
@@ -63,11 +71,17 @@ export default function NoteEditorScreen() {
     });
   }, [id, isNew]);
 
-  // Debounced autosave whenever the note changes.
+  // Debounced autosave whenever the note changes — but never persist a
+  // still-blank note, so opening "New sermon note" and backing out without
+  // typing anything doesn't leave a ghost "Untitled note" in the list.
   useEffect(() => {
     if (!loaded) return;
-    setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (isBlankNote(note)) {
+      setSaveState("saved");
+      return;
+    }
+    setSaveState("saving");
     saveTimer.current = setTimeout(async () => {
       await notesStore.save({ ...note, updatedAt: new Date().toISOString() });
       setSaveState("saved");
@@ -122,7 +136,13 @@ export default function NoteEditorScreen() {
   }
 
   async function goBack() {
-    await notesStore.save({ ...note, updatedAt: new Date().toISOString() });
+    if (isBlankNote(note)) {
+      // Covers both "never saved" and "typed something, then deleted it
+      // all again" — either way there's nothing worth keeping.
+      await notesStore.remove(note.id);
+    } else {
+      await notesStore.save({ ...note, updatedAt: new Date().toISOString() });
+    }
     router.back();
   }
 
