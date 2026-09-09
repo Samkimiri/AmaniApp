@@ -34,11 +34,23 @@ function openWebDb(): Promise<IDBDatabase> {
   });
 }
 
+interface StoredClip {
+  data: ArrayBuffer;
+  mimeType: string;
+}
+
 async function putWebClip(id: string, blob: Blob): Promise<void> {
+  // Store the raw bytes plus the MIME type explicitly, rather than the
+  // Blob object itself — some browsers' IndexedDB structured-clone of a
+  // Blob doesn't reliably carry its `type` through, which then makes
+  // `<audio>` refuse to play the reconstructed blob with a
+  // "no supported source" error even though the bytes are fine.
+  const data = await blob.arrayBuffer();
+  const record: StoredClip = { data, mimeType: blob.type || "audio/webm" };
   const db = await openWebDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(WEB_STORE_NAME, "readwrite");
-    tx.objectStore(WEB_STORE_NAME).put(blob, id);
+    tx.objectStore(WEB_STORE_NAME).put(record, id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -46,12 +58,14 @@ async function putWebClip(id: string, blob: Blob): Promise<void> {
 
 async function getWebClip(id: string): Promise<Blob | undefined> {
   const db = await openWebDb();
-  return new Promise((resolve, reject) => {
+  const record = await new Promise<StoredClip | undefined>((resolve, reject) => {
     const tx = db.transaction(WEB_STORE_NAME, "readonly");
     const request = tx.objectStore(WEB_STORE_NAME).get(id);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+  if (!record) return undefined;
+  return new Blob([record.data], { type: record.mimeType });
 }
 
 /**
@@ -87,4 +101,25 @@ export async function resolvePlayableUri(uri: string): Promise<string> {
     return URL.createObjectURL(blob);
   }
   return uri;
+}
+
+/**
+ * Fallback for `resolvePlayableUri`, tried only if playing the blob: URL
+ * it returns fails. Some browsers refuse to load a blob: URL into an
+ * <audio> element under certain conditions (e.g. it was minted outside
+ * a user gesture, or a WebView-specific quirk); a base64 data: URI takes
+ * a different, more universally-supported code path. Not used as the
+ * primary path since it's slower and heavier for longer recordings.
+ */
+export async function resolvePlayableUriAsDataUrl(uri: string): Promise<string | null> {
+  if (Platform.OS !== "web" || !uri.startsWith(WEB_URI_PREFIX)) return null;
+  const id = uri.slice(WEB_URI_PREFIX.length);
+  const blob = await getWebClip(id);
+  if (!blob) return null;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }

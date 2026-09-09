@@ -14,8 +14,8 @@ import {
   VerseResult,
 } from "@/data/bible";
 import { notesStore } from "@/data/notesStore";
+import { bookmarks, highlights, VerseMark } from "@/data/verseMarks";
 import { newId, SermonNote } from "@/types/note";
-import { useAlert } from "@/context/AlertContext";
 
 const DEFAULT_VERSE: VerseResult = {
   book: "John",
@@ -29,7 +29,19 @@ export default function BibleScreen() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<VerseResult[]>([]);
   const [selected, setSelected] = useState<VerseResult>(DEFAULT_VERSE);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
+  const [savedBookmarks, setSavedBookmarks] = useState<VerseMark[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    bookmarks.isMarked(selected.reference).then(setIsBookmarked);
+    highlights.isMarked(selected.reference).then(setIsHighlighted);
+  }, [selected.reference]);
+
+  useEffect(() => {
+    bookmarks.getAll().then(setSavedBookmarks);
+  }, [isBookmarked]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -59,7 +71,15 @@ export default function BibleScreen() {
     setResults([]);
   }
 
-  const showAlert = useAlert();
+  async function toggleBookmark() {
+    const nowBookmarked = await bookmarks.toggle(selected);
+    setIsBookmarked(nowBookmarked);
+  }
+
+  async function toggleHighlight() {
+    const nowHighlighted = await highlights.toggle(selected);
+    setIsHighlighted(nowHighlighted);
+  }
 
   async function addSelectedVerseToNewNote() {
     const now = new Date().toISOString();
@@ -120,28 +140,34 @@ export default function BibleScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.reference}>{selected.reference}</Text>
-          <Text style={textStyles.verseTextLarge}>&ldquo;{selected.text}&rdquo;</Text>
+          <View style={[styles.verseTextWrap, isHighlighted && styles.verseTextWrapHighlighted]}>
+            <Text style={textStyles.verseTextLarge}>&ldquo;{selected.text}&rdquo;</Text>
+          </View>
 
           <View style={styles.actionsRow}>
             <Pressable
-              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
-              onPress={() =>
-                showAlert({ title: "Bookmarks", message: "Saving verse bookmarks isn't wired up in this concept build yet." })
-              }
+              style={({ pressed }) => [
+                styles.actionButton,
+                isBookmarked && styles.actionButtonActive,
+                pressed && styles.actionButtonPressed,
+              ]}
+              onPress={toggleBookmark}
               accessibilityRole="button"
-              accessibilityLabel="Bookmark this verse"
+              accessibilityLabel={isBookmarked ? "Remove bookmark" : "Bookmark this verse"}
             >
-              <BookmarkIcon size={17} color={colors.textSecondary} />
+              <BookmarkIcon size={17} color={isBookmarked ? colors.gold : colors.textSecondary} />
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
-              onPress={() =>
-                showAlert({ title: "Highlights", message: "Highlighting verses isn't wired up in this concept build yet." })
-              }
+              style={({ pressed }) => [
+                styles.actionButton,
+                isHighlighted && styles.actionButtonActive,
+                pressed && styles.actionButtonPressed,
+              ]}
+              onPress={toggleHighlight}
               accessibilityRole="button"
-              accessibilityLabel="Highlight this verse"
+              accessibilityLabel={isHighlighted ? "Remove highlight" : "Highlight this verse"}
             >
-              <HighlightIcon size={17} color={colors.textSecondary} />
+              <HighlightIcon size={17} color={isHighlighted ? colors.gold : colors.textSecondary} />
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
@@ -152,6 +178,26 @@ export default function BibleScreen() {
               <PlusIcon size={17} color={colors.navy} strokeWidth={2} />
             </Pressable>
           </View>
+
+          {savedBookmarks.length > 0 ? (
+            <View style={{ marginTop: 26 }}>
+              <Text style={textStyles.label}>Your bookmarks</Text>
+              <View style={styles.chipRow}>
+                {savedBookmarks.map((mark) => (
+                  <Pressable
+                    key={mark.reference}
+                    style={styles.chip}
+                    onPress={() => {
+                      const resolved = getVerseCandidates(mark.reference, 1)[0];
+                      if (resolved) choose(resolved);
+                    }}
+                  >
+                    <Text style={styles.chipText}>{mark.reference}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           {crossRefs.length > 0 ? (
             <View style={{ marginTop: 26 }}>
@@ -213,6 +259,13 @@ const styles = StyleSheet.create({
     color: colors.gold,
     marginBottom: 8,
   },
+  verseTextWrap: { borderRadius: 12 },
+  verseTextWrapHighlighted: {
+    backgroundColor: colors.verseBg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginHorizontal: -12,
+  },
   actionsRow: { flexDirection: "row", gap: 10, marginTop: 20 },
   actionButton: {
     width: 44,
@@ -224,6 +277,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  actionButtonActive: { backgroundColor: colors.verseBg, borderColor: "#F0E1BC" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   chip: {
     backgroundColor: colors.card,

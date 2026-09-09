@@ -31,7 +31,7 @@ import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ShareSheet } from "@/components/ShareSheet";
 import { getVerseCandidates, VerseResult } from "@/data/bible";
 import { notesStore } from "@/data/notesStore";
-import { persistRecording, resolvePlayableUri } from "@/data/audioStorage";
+import { persistRecording, resolvePlayableUri, resolvePlayableUriAsDataUrl } from "@/data/audioStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
 import { useAlert } from "@/context/AlertContext";
 
@@ -244,10 +244,8 @@ export default function NoteEditorScreen() {
       releasePlayingObjectUrl();
     }
 
-    try {
-      const playableUri = await resolvePlayableUri(block.uri);
-      if (playableUri.startsWith("blob:")) playingObjectUrlRef.current = playableUri;
-      const { sound } = await Audio.Sound.createAsync({ uri: playableUri }, { shouldPlay: true });
+    async function loadAndPlay(uri: string) {
+      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
       soundRef.current = sound;
       setPlayingBlockId(block.id);
       sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
@@ -255,8 +253,23 @@ export default function NoteEditorScreen() {
           setPlayingBlockId(null);
         }
       });
+    }
+
+    try {
+      const playableUri = await resolvePlayableUri(block.uri);
+      if (playableUri.startsWith("blob:")) playingObjectUrlRef.current = playableUri;
+      await loadAndPlay(playableUri);
     } catch (err) {
-      showAlert({ title: "Couldn't play this recording", message: String(err) });
+      // Some browsers refuse a blob: URL for <audio> in certain contexts;
+      // retry once with a base64 data: URI, which takes a different,
+      // more universally-supported loading path.
+      try {
+        const fallbackUri = await resolvePlayableUriAsDataUrl(block.uri);
+        if (!fallbackUri) throw err;
+        await loadAndPlay(fallbackUri);
+      } catch (fallbackErr) {
+        showAlert({ title: "Couldn't play this recording", message: String(fallbackErr) });
+      }
     }
   }
 
