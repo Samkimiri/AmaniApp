@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import { Audio, type AVPlaybackStatus } from "expo-av";
 import { colors } from "@/theme/colors";
 import { fontFamily } from "@/theme/typography";
 import {
@@ -23,13 +23,16 @@ import {
   MicIcon,
   OpenBookIcon,
   ShareArrowIcon,
+  StopIcon,
   TagIcon,
 } from "@/components/icons";
 import { VerseCallout } from "@/components/VerseCallout";
+import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ShareSheet } from "@/components/ShareSheet";
 import { getVerseCandidates, VerseResult } from "@/data/bible";
 import { notesStore } from "@/data/notesStore";
-import { NoteBlock, newId, SermonNote } from "@/types/note";
+import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
+import { useAlert } from "@/context/AlertContext";
 
 function isBlankNote(note: SermonNote): boolean {
   return (
@@ -62,6 +65,20 @@ export default function NoteEditorScreen() {
   const [verseQuery, setVerseQuery] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const [shareOpen, setShareOpen] = useState(false);
+  const showAlert = useAlert();
+
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  useEffect(() => {
+    return () => {
+      soundRef.current?.unloadAsync();
+      recording?.stopAndUnloadAsync().catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (isNew) return;
@@ -120,10 +137,34 @@ export default function NoteEditorScreen() {
     setVerseBarOpen(false);
   }
 
-  async function addPhoto() {
+  function addPhoto() {
+    showAlert({
+      title: "Add a photo",
+      message: "Photograph a sermon slide, or choose one you've already saved.",
+      actions: [
+        { label: "Take Photo", onPress: capturePhoto },
+        { label: "Choose from Library", onPress: pickFromLibrary },
+        { label: "Cancel", style: "cancel" },
+      ],
+    });
+  }
+
+  async function capturePhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      showAlert({ title: "Camera access needed", message: "Allow camera access to photograph a sermon slide." });
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (!result.canceled && result.assets[0]) {
+      appendBlock({ id: newId(), type: "image", uri: result.assets[0].uri });
+    }
+  }
+
+  async function pickFromLibrary() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Photo access needed", "Allow photo access to attach a picture to this note.");
+      showAlert({ title: "Photo access needed", message: "Allow photo access to attach a picture to this note." });
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -132,6 +173,75 @@ export default function NoteEditorScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       appendBlock({ id: newId(), type: "image", uri: result.assets[0].uri });
+    }
+  }
+
+  async function toggleRecording() {
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync();
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+        const status = await recording.getStatusAsync();
+        const uri = recording.getURI();
+        if (uri) {
+          appendBlock({
+            id: newId(),
+            type: "audio",
+            uri,
+            durationMillis: status.durationMillis ?? recordingDuration,
+          });
+        }
+      } catch (err) {
+        showAlert({ title: "Couldn't save the recording", message: String(err) });
+      } finally {
+        setRecording(null);
+        setRecordingDuration(0);
+      }
+      return;
+    }
+
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        showAlert({ title: "Microphone access needed", message: "Allow microphone access to record sermon audio." });
+        return;
+      }
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        (status) => setRecordingDuration(status.durationMillis ?? 0),
+        200
+      );
+      setRecording(rec);
+      setRecordingDuration(0);
+    } catch (err) {
+      showAlert({ title: "Couldn't start recording", message: String(err) });
+    }
+  }
+
+  async function togglePlayback(block: Extract<NoteBlock, { type: "audio" }>) {
+    if (playingBlockId === block.id) {
+      await soundRef.current?.pauseAsync();
+      setPlayingBlockId(null);
+      return;
+    }
+
+    if (soundRef.current) {
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
+
+    try {
+      const { sound } = await Audio.Sound.createAsync({ uri: block.uri }, { shouldPlay: true });
+      soundRef.current = sound;
+      setPlayingBlockId(block.id);
+      sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingBlockId(null);
+        }
+      });
+    } catch (err) {
+      showAlert({ title: "Couldn't play this recording", message: String(err) });
     }
   }
 
@@ -199,6 +309,16 @@ export default function NoteEditorScreen() {
             if (block.type === "verse") {
               return <VerseCallout key={block.id} reference={block.reference} text={block.text} />;
             }
+            if (block.type === "audio") {
+              return (
+                <AudioBlockRow
+                  key={block.id}
+                  durationMillis={block.durationMillis}
+                  isPlaying={playingBlockId === block.id}
+                  onToggle={() => togglePlayback(block)}
+                />
+              );
+            }
             return (
               <View key={block.id} style={styles.imageBlock}>
                 <Image source={{ uri: block.uri }} style={styles.image} />
@@ -210,6 +330,16 @@ export default function NoteEditorScreen() {
             );
           })}
         </ScrollView>
+
+        {recording ? (
+          <View style={styles.recordingBar}>
+            <View style={styles.recordingDot} />
+            <Text style={styles.recordingText}>Recording… {formatDuration(recordingDuration)}</Text>
+            <Pressable style={styles.stopButton} onPress={toggleRecording} hitSlop={8}>
+              <StopIcon size={13} />
+            </Pressable>
+          </View>
+        ) : null}
 
         {verseBarOpen ? (
           <View style={styles.verseBar}>
@@ -239,10 +369,10 @@ export default function NoteEditorScreen() {
 
         <View style={styles.toolbar}>
           <Pressable
-            style={styles.toolbarButton}
-            onPress={() => Alert.alert("Audio recording", "Not wired up in this concept build yet.")}
+            style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
+            onPress={toggleRecording}
           >
-            <MicIcon size={18} />
+            <MicIcon size={18} color={recording ? colors.white : colors.textSecondary} />
           </Pressable>
           <Pressable style={styles.toolbarButton} onPress={addPhoto}>
             <CameraIcon size={18} />
@@ -255,7 +385,9 @@ export default function NoteEditorScreen() {
           </Pressable>
           <Pressable
             style={styles.toolbarButton}
-            onPress={() => Alert.alert("Tags", "Organizing notes by tag isn't wired up in this concept build yet.")}
+            onPress={() =>
+              showAlert({ title: "Tags", message: "Organizing notes by tag isn't wired up in this concept build yet." })
+            }
           >
             <TagIcon size={18} />
           </Pressable>
@@ -307,6 +439,24 @@ const styles = StyleSheet.create({
   imageCaption: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },
   imageCaptionText: { fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: colors.textSecondary },
 
+  recordingBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.navy,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FF6B5E" },
+  recordingText: { flex: 1, fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.white },
+  stopButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   verseBar: {
     backgroundColor: colors.card,
     borderTopWidth: 1,
@@ -351,6 +501,7 @@ const styles = StyleSheet.create({
   },
   toolbarButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#F5F2EA", alignItems: "center", justifyContent: "center" },
   toolbarButtonActive: { backgroundColor: colors.verseBg },
+  toolbarButtonRecording: { backgroundColor: "#FF6B5E" },
   savedRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   savedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
   savedText: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },

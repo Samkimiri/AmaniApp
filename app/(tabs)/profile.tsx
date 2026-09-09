@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/theme/colors";
 import { fontFamily, textStyles } from "@/theme/typography";
 import { OpenBookIcon, UserIcon } from "@/components/icons";
+import { AppLockSection } from "@/components/AppLockSection";
 import { TRANSLATION } from "@/data/bible";
 
 export default function ProfileScreen() {
@@ -34,6 +35,8 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
+
+        <AppLockSection />
 
         <Text style={styles.footnote}>
           Amani &middot; v0.1.0 (concept build){"\n"}

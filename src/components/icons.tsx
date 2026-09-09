@@ -229,3 +229,71 @@ export function CloseIcon({ size = 18, color = "#5B6472", strokeWidth = 2 }: Ico
     </Svg>
   );
 }
+
+export function LockIcon({ size = 20, color = "#1F3A5F", strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Rect x={5.5} y={11} width={13} height={9.5} rx={2} />
+      <Path d="M8 11V7.5a4 4 0 0 1 8 0V11" />
+      <Circle cx={12} cy={15.3} r={1.3} fill={color} stroke="none" />
+    </Svg>
+  );
+}
+
+export function BackspaceIcon({ size = 22, color = "#182233", strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M9.5 5.5H19a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9.5L4 12l5.5-6.5Z" />
+      <Line x1={11.5} y1={9.5} x2={16.5} y2={14.5} />
+      <Line x1={16.5} y1={9.5} x2={11.5} y2={14.5} />
+    </Svg>
+  );
+}
+
+export function PlayIcon({ size = 18, color = "#FFFFFF", strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color} fill={color}>
+      <Path d="M7 5.5v13l11-6.5-11-6.5Z" />
+    </Svg>
+  );
+}
+
+export function PauseIcon({ size = 18, color = "#FFFFFF", strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color} fill={color}>
+      <Rect x={6.5} y={5} width={4} height={14} rx={1} />
+      <Rect x={13.5} y={5} width={4} height={14} rx={1} />
+    </Svg>
+  );
+}
+
+export function StopIcon({ size = 16, color = "#FFFFFF", strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color} fill={color}>
+      <Rect x={5.5} y={5.5} width={13} height={13} rx={2.5} />
+    </Svg>
+  );
+}
+
+export function DownloadIcon({ size = 20, color = "#1F3A5F", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M12 4v11" />
+      <Path d="M7.5 11 12 15.5 16.5 11" />
+      <Path d="M5 17.5h14" />
+    </Svg>
+  );
+}
+
+export function WaveformIcon({ size = 18, color = "#5B6472", strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Line x1={3} y1={12} x2={3} y2={12} />
+      <Line x1={6} y1={8} x2={6} y2={16} />
+      <Line x1={9.5} y1={4.5} x2={9.5} y2={19.5} />
+      <Line x1={13} y1={9} x2={13} y2={15} />
+      <Line x1={16.5} y1={6} x2={16.5} y2={18} />
+      <Line x1={20} y1={10} x2={20} y2={14} />
+    </Svg>
+  );
+}

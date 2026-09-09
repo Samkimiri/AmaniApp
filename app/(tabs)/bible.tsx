@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { colors } from "@/theme/colors";
 import { fontFamily, textStyles } from "@/theme/typography";
 import { SearchIcon, BookmarkIcon, HighlightIcon, PlusIcon } from "@/components/icons";
@@ -12,6 +13,9 @@ import {
   TRANSLATION,
   VerseResult,
 } from "@/data/bible";
+import { notesStore } from "@/data/notesStore";
+import { newId, SermonNote } from "@/types/note";
+import { useAlert } from "@/context/AlertContext";
 
 const DEFAULT_VERSE: VerseResult = {
   book: "John",
@@ -53,6 +57,27 @@ export default function BibleScreen() {
     setSelected(v);
     setQuery("");
     setResults([]);
+  }
+
+  const showAlert = useAlert();
+
+  async function addSelectedVerseToNewNote() {
+    const now = new Date().toISOString();
+    const id = newId();
+    const note: SermonNote = {
+      id,
+      title: "",
+      church: "",
+      date: new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }),
+      blocks: [
+        { id: newId(), type: "verse", reference: selected.reference, text: selected.text },
+        { id: newId(), type: "text", text: "" },
+      ],
+      createdAt: now,
+      updatedAt: now,
+    };
+    await notesStore.save(note);
+    router.push(`/note/${id}`);
   }
 
   return (
@@ -98,15 +123,28 @@ export default function BibleScreen() {
           <Text style={textStyles.verseTextLarge}>&ldquo;{selected.text}&rdquo;</Text>
 
           <View style={styles.actionsRow}>
-            <View style={styles.actionButton}>
+            <Pressable
+              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+              onPress={() =>
+                showAlert({ title: "Bookmarks", message: "Saving verse bookmarks isn't wired up in this concept build yet." })
+              }
+            >
               <BookmarkIcon size={17} color={colors.textSecondary} />
-            </View>
-            <View style={styles.actionButton}>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+              onPress={() =>
+                showAlert({ title: "Highlights", message: "Highlighting verses isn't wired up in this concept build yet." })
+              }
+            >
               <HighlightIcon size={17} color={colors.textSecondary} />
-            </View>
-            <View style={styles.actionButton}>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+              onPress={addSelectedVerseToNewNote}
+            >
               <PlusIcon size={17} color={colors.navy} strokeWidth={2} />
-            </View>
+            </Pressable>
           </View>
 
           {crossRefs.length > 0 ? (
@@ -145,6 +183,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  actionButtonPressed: { opacity: 0.6 },
   translationText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.white },
   searchBar: {
     marginHorizontal: 24,

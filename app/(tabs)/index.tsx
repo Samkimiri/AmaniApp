@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/theme/colors";
@@ -7,7 +7,10 @@ import { fontFamily, textStyles } from "@/theme/typography";
 import { OpenBookIcon, PlusIcon, ChevronRightIcon, UserIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { NoteCard } from "@/components/NoteCard";
+import { VerseOfTheDayCard } from "@/components/VerseOfTheDayCard";
+import { InstallBanner } from "@/components/InstallBanner";
 import { useNotes } from "@/hooks/useNotes";
+import { getVerseOfTheDay } from "@/data/verseOfTheDay";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -19,6 +22,7 @@ function greeting(): string {
 export default function HomeScreen() {
   const { notes } = useNotes();
   const latest = notes[0];
+  const verseOfTheDay = React.useMemo(() => getVerseOfTheDay(), []);
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -43,6 +47,14 @@ export default function HomeScreen() {
           <Text style={textStyles.displayTitle}>{greeting()}</Text>
         </View>
 
+        <InstallBanner />
+
+        {verseOfTheDay ? (
+          <View style={{ marginTop: 20 }}>
+            <VerseOfTheDayCard verse={verseOfTheDay} />
+          </View>
+        ) : null}
+
         <PrimaryButton
           label="New sermon note"
           icon={<PlusIcon size={18} />}
@@ -66,16 +78,22 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.tileRow}>
-          <View style={styles.tile}>
+          <Pressable
+            style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+            onPress={() => router.push("/bible")}
+          >
             <OpenBookIcon size={20} color={colors.navy} />
             <Text style={styles.tileTitle}>Bible</Text>
             <Text style={styles.tileSubtitle}>Read offline</Text>
-          </View>
-          <View style={styles.tile}>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+            onPress={() => router.push("/notes")}
+          >
             <ChevronRightIcon size={20} color={colors.navy} />
             <Text style={styles.tileTitle}>All notes</Text>
             <Text style={styles.tileSubtitle}>{notes.length} saved</Text>
-          </View>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -116,6 +134,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
   },
+  tilePressed: { opacity: 0.7 },
   tileTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
   tileSubtitle: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },
 });

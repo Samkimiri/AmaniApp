@@ -25,14 +25,28 @@
       "package": "com.amaniapp.mobile"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "Amani",
+      "shortName": "Amani",
+      "themeColor": "#1F3A5F",
+      "backgroundColor": "#1F3A5F",
+      "display": "standalone"
     },
     "plugins": [
       "expo-router",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Amani uses your photos to attach a picture (like a sermon slide) to a note."
+          "photosPermission": "Amani uses your photos to attach a picture (like a sermon slide) to a note.",
+          "cameraPermission": "Amani uses your camera to photograph a sermon slide or note to attach it."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Amani uses your microphone to record sermon audio alongside your notes."
         }
       ]
     ]

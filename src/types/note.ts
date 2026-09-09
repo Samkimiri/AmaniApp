@@ -1,4 +1,4 @@
-export type NoteBlockType = "text" | "verse" | "image";
+export type NoteBlockType = "text" | "verse" | "image" | "audio";
 
 export interface TextBlock {
   id: string;
@@ -20,7 +20,25 @@ export interface ImageBlock {
   caption?: string;
 }
 
-export type NoteBlock = TextBlock | VerseBlock | ImageBlock;
+export interface AudioBlock {
+  id: string;
+  type: "audio";
+  uri: string;
+  durationMillis: number;
+}
+
+export type NoteBlock = TextBlock | VerseBlock | ImageBlock | AudioBlock;
+
+export function firstAudioBlock(note: SermonNote): AudioBlock | undefined {
+  return note.blocks.find((b): b is AudioBlock => b.type === "audio");
+}
+
+export function formatDuration(millis: number): string {
+  const totalSeconds = Math.max(0, Math.round(millis / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
 
 export interface SermonNote {
   id: string;
@@ -57,6 +75,8 @@ export function noteToPlainText(note: SermonNote): string {
       lines.push(`"${block.text}" — ${block.reference}`);
     } else if (block.type === "image") {
       lines.push(`[Photo${block.caption ? `: ${block.caption}` : ""}]`);
+    } else if (block.type === "audio") {
+      lines.push(`[Audio recording, ${formatDuration(block.durationMillis)}]`);
     }
   }
   lines.push("");
@@ -84,6 +104,11 @@ export function noteToHtml(note: SermonNote): string {
       }
       if (block.type === "image") {
         return `<img src="${block.uri}" style="width:100%;border-radius:8px;margin:12px 0;" />`;
+      }
+      if (block.type === "audio") {
+        return `<div style="margin:12px 0;padding:10px 14px;border:1px solid #ECE4D4;border-radius:8px;color:#5B6472;font-size:13px;">&#127911; Audio recording &middot; ${escapeHtml(
+          formatDuration(block.durationMillis)
+        )}</div>`;
       }
       return "";
     })

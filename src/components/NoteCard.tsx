@@ -2,11 +2,12 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/theme/colors";
 import { fontFamily } from "@/theme/typography";
-import { OpenBookIcon } from "./icons";
-import { firstVerseBlock, SermonNote } from "@/types/note";
+import { OpenBookIcon, WaveformIcon } from "./icons";
+import { firstAudioBlock, firstVerseBlock, formatDuration, SermonNote } from "@/types/note";
 
 export function NoteCard({ note, onPress }: { note: SermonNote; onPress: () => void }) {
   const verse = firstVerseBlock(note);
+  const audio = firstAudioBlock(note);
   const previewBlock = note.blocks.find(
     (b): b is Extract<typeof b, { type: "text" }> => b.type === "text" && b.text.trim().length > 0
   );
@@ -25,10 +26,20 @@ export function NoteCard({ note, onPress }: { note: SermonNote; onPress: () => v
           {preview}
         </Text>
       ) : null}
-      {verse ? (
-        <View style={styles.versePill}>
-          <OpenBookIcon size={13} color={colors.verseText} />
-          <Text style={styles.versePillText}>{verse.reference}</Text>
+      {verse || audio ? (
+        <View style={styles.pillRow}>
+          {verse ? (
+            <View style={styles.versePill}>
+              <OpenBookIcon size={13} color={colors.verseText} />
+              <Text style={styles.versePillText}>{verse.reference}</Text>
+            </View>
+          ) : null}
+          {audio ? (
+            <View style={styles.audioPill}>
+              <WaveformIcon size={13} color={colors.textSecondary} />
+              <Text style={styles.audioPillText}>{formatDuration(audio.durationMillis)}</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
     </Pressable>
@@ -63,6 +74,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: colors.textSecondary,
   },
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
   versePill: {
     flexDirection: "row",
     alignSelf: "flex-start",
@@ -72,11 +84,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
-    marginTop: 2,
   },
   versePillText: {
     fontFamily: fontFamily.sansBold,
     fontSize: 12,
     color: colors.verseText,
+  },
+  audioPill: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  audioPillText: {
+    fontFamily: fontFamily.sansBold,
+    fontSize: 12,
+    color: colors.textSecondary,
   },
 });

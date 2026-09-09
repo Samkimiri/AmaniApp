@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
@@ -8,6 +8,7 @@ import { colors } from "@/theme/colors";
 import { fontFamily } from "@/theme/typography";
 import { ClipboardIcon, CloseIcon, DocumentIcon, ImageCardIcon, LinkIcon, OpenBookIcon } from "./icons";
 import { firstVerseBlock, noteToHtml, noteToPlainText, SermonNote } from "@/types/note";
+import { useAlert } from "@/context/AlertContext";
 
 interface ShareSheetProps {
   visible: boolean;
@@ -26,10 +27,14 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
   const shotRef = useRef<ViewShot>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const verse = firstVerseBlock(note);
+  const showAlert = useAlert();
 
   async function shareVerseImage() {
     if (!verse) {
-      Alert.alert("No verse in this note yet", "Insert a verse into the note first to make a verse card.");
+      showAlert({
+        title: "No verse in this note yet",
+        message: "Insert a verse into the note first to make a verse card.",
+      });
       return;
     }
     try {
@@ -38,7 +43,7 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
       const uri: string = await shotRef.current?.capture?.();
       if (uri) await Sharing.shareAsync(uri, { mimeType: "image/png" });
     } catch (err) {
-      Alert.alert("Couldn't create the image", String(err));
+      showAlert({ title: "Couldn't create the image", message: String(err) });
     } finally {
       setBusy(null);
     }
@@ -50,7 +55,7 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
       const { uri } = await Print.printToFileAsync({ html: noteToHtml(note) });
       await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
     } catch (err) {
-      Alert.alert("Couldn't create the PDF", String(err));
+      showAlert({ title: "Couldn't create the PDF", message: String(err) });
     } finally {
       setBusy(null);
     }
@@ -58,14 +63,15 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
 
   async function copyText() {
     await Clipboard.setStringAsync(noteToPlainText(note));
-    Alert.alert("Copied", "The note was copied as plain text.");
+    showAlert({ title: "Copied", message: "The note was copied as plain text." });
   }
 
   function amaniLink() {
-    Alert.alert(
-      "Amani link (coming soon)",
-      "Opening a note directly inside a cell-group member's app needs a small sync backend, which isn't part of this concept build yet. For now, use one of the other formats."
-    );
+    showAlert({
+      title: "Amani link (coming soon)",
+      message:
+        "Opening a note directly inside a cell-group member's app needs a small sync backend, which isn't part of this concept build yet. For now, use one of the other formats.",
+    });
   }
 
   return (
