@@ -20,8 +20,8 @@ export default function ProfileScreen() {
         </View>
         <Text style={styles.name}>Your notes, on this device</Text>
         <Text style={styles.subtitle}>
-          Amani doesn't require an account. Notes stay on this phone unless you choose to share
-          them.
+          Amani doesn't require an account and works fully offline — your notes and the whole
+          Bible stay on this device, no connection needed.
         </Text>
 
         <View style={styles.card}>
