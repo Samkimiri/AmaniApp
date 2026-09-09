@@ -41,7 +41,7 @@ export function AlertProvider({ children }: PropsWithChildren) {
       {children}
       <Modal visible={options !== null} transparent animationType="fade" onRequestClose={close}>
         <Pressable style={styles.scrim} onPress={close} />
-        <View style={styles.sheetWrap} pointerEvents="box-none">
+        <View style={[styles.sheetWrap, { pointerEvents: "box-none" }]}>
           <View style={styles.sheet}>
             {options ? (
               <>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { colors } from "@/theme/colors";
 import { fontFamily } from "@/theme/typography";
 
@@ -37,11 +37,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 14,
     paddingHorizontal: 20,
-    shadowColor: colors.navy,
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    ...Platform.select({
+      web: { boxShadow: "0px 8px 16px rgba(31, 58, 95, 0.28)" },
+      default: {
+        shadowColor: colors.navy,
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 4,
+      },
+    }),
   },
   pressed: {
     opacity: 0.9,

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/theme/colors";
 import { fontFamily } from "@/theme/typography";
@@ -62,7 +62,11 @@ export function LockScreen({ onUnlock }: { onUnlock: (pin: string) => Promise<bo
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.navy },
+  // Rendered as a sibling on top of the still-mounted app Stack (see
+  // _layout.tsx) so locking/unlocking doesn't reset navigation state —
+  // absolute positioning is what makes it actually cover the screen
+  // instead of just taking up space in normal document flow.
+  screen: { ...(StyleSheet.absoluteFillObject as ViewStyle), backgroundColor: colors.navy, zIndex: 100 },
   content: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 36 },
   brandText: { fontFamily: fontFamily.serifBold, fontSize: 24, color: colors.white },

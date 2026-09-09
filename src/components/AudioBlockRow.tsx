@@ -17,7 +17,13 @@ export function AudioBlockRow({
 }) {
   return (
     <View style={styles.wrap}>
-      <Pressable style={styles.playButton} onPress={onToggle} hitSlop={10}>
+      <Pressable
+        style={styles.playButton}
+        onPress={onToggle}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={isPlaying ? "Pause recording" : "Play recording"}
+      >
         {isPlaying ? <PauseIcon size={15} /> : <PlayIcon size={15} />}
       </Pressable>
       <WaveformIcon size={20} color={colors.textMuted} />

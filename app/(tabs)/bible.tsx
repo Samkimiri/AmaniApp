@@ -128,6 +128,8 @@ export default function BibleScreen() {
               onPress={() =>
                 showAlert({ title: "Bookmarks", message: "Saving verse bookmarks isn't wired up in this concept build yet." })
               }
+              accessibilityRole="button"
+              accessibilityLabel="Bookmark this verse"
             >
               <BookmarkIcon size={17} color={colors.textSecondary} />
             </Pressable>
@@ -136,12 +138,16 @@ export default function BibleScreen() {
               onPress={() =>
                 showAlert({ title: "Highlights", message: "Highlighting verses isn't wired up in this concept build yet." })
               }
+              accessibilityRole="button"
+              accessibilityLabel="Highlight this verse"
             >
               <HighlightIcon size={17} color={colors.textSecondary} />
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
               onPress={addSelectedVerseToNewNote}
+              accessibilityRole="button"
+              accessibilityLabel="Add this verse to a new note"
             >
               <PlusIcon size={17} color={colors.navy} strokeWidth={2} />
             </Pressable>

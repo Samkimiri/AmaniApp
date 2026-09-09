@@ -53,6 +53,8 @@ export function PinPad({
                 style={({ pressed }) => [styles.key, pressed && styles.keyPressed]}
                 onPress={() => press(key)}
                 hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Delete digit"
               >
                 <BackspaceIcon size={22} color={dark ? colors.white : colors.textPrimary} />
               </Pressable>
@@ -64,6 +66,8 @@ export function PinPad({
               style={({ pressed }) => [styles.key, pressed && styles.keyPressed]}
               onPress={() => press(key)}
               hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={`Digit ${key}`}
             >
               <Text style={[styles.keyText, dark && styles.keyTextDark]}>{key}</Text>
             </Pressable>

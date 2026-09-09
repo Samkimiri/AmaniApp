@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
@@ -14,6 +14,31 @@ interface ShareSheetProps {
   visible: boolean;
   onClose: () => void;
   note: SermonNote;
+}
+
+/** Triggers a real browser download of a data: URI — web only. */
+function downloadDataUrl(dataUrl: string, filename: string) {
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/** Opens the note's formatted HTML in a new tab and prints it — web
+ * only. Lets the user pick "Save as PDF" in the browser's print dialog,
+ * which is the standard way to get a real PDF out of a web page without
+ * a native module or a client-side PDF library. */
+function printNoteInNewTab(note: SermonNote) {
+  const win = window.open("", "_blank");
+  if (!win) {
+    throw new Error("Pop-up blocked — allow pop-ups for this site to save the note as a PDF.");
+  }
+  win.document.write(noteToHtml(note));
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
 }
 
 /**
@@ -41,7 +66,15 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
       setBusy("image");
       // @ts-ignore - capture() exists on the ViewShot ref at runtime
       const uri: string = await shotRef.current?.capture?.();
-      if (uri) await Sharing.shareAsync(uri, { mimeType: "image/png" });
+      if (!uri) return;
+      if (Platform.OS === "web") {
+        // expo-sharing's web fallback only works via navigator.share, which
+        // is unsupported on most desktop browsers and isn't meant for
+        // data: URIs — a direct file download works everywhere instead.
+        downloadDataUrl(uri, "amani-verse-card.png");
+      } else {
+        await Sharing.shareAsync(uri, { mimeType: "image/png" });
+      }
     } catch (err) {
       showAlert({ title: "Couldn't create the image", message: String(err) });
     } finally {
@@ -52,8 +85,17 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
   async function sharePdf() {
     try {
       setBusy("pdf");
-      const { uri } = await Print.printToFileAsync({ html: noteToHtml(note) });
-      await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      if (Platform.OS === "web") {
+        // expo-print's web implementation ignores the html argument
+        // entirely and just calls window.print() on the current page —
+        // it can't produce a file at all on web. Open the formatted note
+        // in a new tab and print *that*, so "Save as PDF" in the
+        // browser's print dialog actually saves the note's content.
+        printNoteInNewTab(note);
+      } else {
+        const { uri } = await Print.printToFileAsync({ html: noteToHtml(note) });
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
     } catch (err) {
       showAlert({ title: "Couldn't create the PDF", message: String(err) });
     } finally {
@@ -87,7 +129,13 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
               {verse ? ` · ${verse.reference}` : ""}
             </Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={10} style={styles.closeButton}>
+          <Pressable
+            onPress={onClose}
+            hitSlop={10}
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
             <CloseIcon size={16} />
           </Pressable>
         </View>
@@ -126,7 +174,7 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
       </View>
 
       {/* Offscreen verse-card render target for image capture. */}
-      <View style={styles.offscreen} pointerEvents="none">
+      <View style={[styles.offscreen, { pointerEvents: "none" }]}>
         <ViewShot ref={shotRef} options={{ format: "png", quality: 0.95 }}>
           <View style={styles.card}>
             <View style={styles.cardBrandRow}>

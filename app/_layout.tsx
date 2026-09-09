@@ -22,22 +22,18 @@ function Gate() {
     return <View style={{ flex: 1, backgroundColor: colors.navy }} />;
   }
 
-  if (enabled && locked) {
-    return (
-      <>
-        <StatusBar style="light" />
-        <LockScreen onUnlock={unlock} />
-      </>
-    );
-  }
-
+  // The Stack stays mounted underneath the lock screen (rather than being
+  // swapped out for it) so navigation state survives a lock/unlock cycle —
+  // otherwise "Lock now" from Profile would drop the user back on Home
+  // instead of returning them to where they were.
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={enabled && locked ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="note/[id]" options={{ presentation: "card" }} />
       </Stack>
+      {enabled && locked ? <LockScreen onUnlock={unlock} /> : null}
     </>
   );
 }

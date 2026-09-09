@@ -31,6 +31,7 @@ import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ShareSheet } from "@/components/ShareSheet";
 import { getVerseCandidates, VerseResult } from "@/data/bible";
 import { notesStore } from "@/data/notesStore";
+import { persistRecording, resolvePlayableUri } from "@/data/audioStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
 import { useAlert } from "@/context/AlertContext";
 
@@ -71,10 +72,12 @@ export default function NoteEditorScreen() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const playingObjectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
       soundRef.current?.unloadAsync();
+      if (playingObjectUrlRef.current) URL.revokeObjectURL(playingObjectUrlRef.current);
       recording?.stopAndUnloadAsync().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -184,10 +187,12 @@ export default function NoteEditorScreen() {
         const status = await recording.getStatusAsync();
         const uri = recording.getURI();
         if (uri) {
+          const blockId = newId();
+          const persistedUri = await persistRecording(uri, blockId);
           appendBlock({
-            id: newId(),
+            id: blockId,
             type: "audio",
-            uri,
+            uri: persistedUri,
             durationMillis: status.durationMillis ?? recordingDuration,
           });
         }
@@ -219,6 +224,13 @@ export default function NoteEditorScreen() {
     }
   }
 
+  function releasePlayingObjectUrl() {
+    if (playingObjectUrlRef.current) {
+      URL.revokeObjectURL(playingObjectUrlRef.current);
+      playingObjectUrlRef.current = null;
+    }
+  }
+
   async function togglePlayback(block: Extract<NoteBlock, { type: "audio" }>) {
     if (playingBlockId === block.id) {
       await soundRef.current?.pauseAsync();
@@ -229,10 +241,13 @@ export default function NoteEditorScreen() {
     if (soundRef.current) {
       await soundRef.current.unloadAsync();
       soundRef.current = null;
+      releasePlayingObjectUrl();
     }
 
     try {
-      const { sound } = await Audio.Sound.createAsync({ uri: block.uri }, { shouldPlay: true });
+      const playableUri = await resolvePlayableUri(block.uri);
+      if (playableUri.startsWith("blob:")) playingObjectUrlRef.current = playableUri;
+      const { sound } = await Audio.Sound.createAsync({ uri: playableUri }, { shouldPlay: true });
       soundRef.current = sound;
       setPlayingBlockId(block.id);
       sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
@@ -264,7 +279,13 @@ export default function NoteEditorScreen() {
         keyboardVerticalOffset={8}
       >
         <View style={styles.header}>
-          <Pressable onPress={goBack} style={styles.headerButton} hitSlop={8}>
+          <Pressable
+            onPress={goBack}
+            style={styles.headerButton}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
             <ChevronLeftIcon size={20} />
           </Pressable>
           <View style={{ alignItems: "center" }}>
@@ -277,7 +298,13 @@ export default function NoteEditorScreen() {
             />
             <Text style={styles.dateText}>{note.date}</Text>
           </View>
-          <Pressable onPress={() => setShareOpen(true)} style={styles.headerButtonDark} hitSlop={8}>
+          <Pressable
+            onPress={() => setShareOpen(true)}
+            style={styles.headerButtonDark}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Share this note"
+          >
             <ShareArrowIcon size={17} color={colors.white} />
           </Pressable>
         </View>
@@ -335,7 +362,13 @@ export default function NoteEditorScreen() {
           <View style={styles.recordingBar}>
             <View style={styles.recordingDot} />
             <Text style={styles.recordingText}>Recording… {formatDuration(recordingDuration)}</Text>
-            <Pressable style={styles.stopButton} onPress={toggleRecording} hitSlop={8}>
+            <Pressable
+              style={styles.stopButton}
+              onPress={toggleRecording}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Stop recording"
+            >
               <StopIcon size={13} />
             </Pressable>
           </View>
@@ -371,15 +404,24 @@ export default function NoteEditorScreen() {
           <Pressable
             style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
             onPress={toggleRecording}
+            accessibilityRole="button"
+            accessibilityLabel={recording ? "Stop recording" : "Record audio"}
           >
             <MicIcon size={18} color={recording ? colors.white : colors.textSecondary} />
           </Pressable>
-          <Pressable style={styles.toolbarButton} onPress={addPhoto}>
+          <Pressable
+            style={styles.toolbarButton}
+            onPress={addPhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Add a photo"
+          >
             <CameraIcon size={18} />
           </Pressable>
           <Pressable
             style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
             onPress={() => setVerseBarOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel="Insert a Bible verse"
           >
             <OpenBookIcon size={18} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
           </Pressable>
@@ -388,6 +430,8 @@ export default function NoteEditorScreen() {
             onPress={() =>
               showAlert({ title: "Tags", message: "Organizing notes by tag isn't wired up in this concept build yet." })
             }
+            accessibilityRole="button"
+            accessibilityLabel="Tags"
           >
             <TagIcon size={18} />
           </Pressable>
