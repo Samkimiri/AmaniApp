@@ -3,14 +3,18 @@ import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
+import { Analytics } from "@vercel/analytics/react";
 import { fontsToLoad } from "@/theme/typography";
 import { colors } from "@/theme/colors";
 import { AppLockProvider, useAppLockContext } from "@/context/AppLockContext";
 import { AlertProvider } from "@/context/AlertContext";
 import { LockScreen } from "@/components/LockScreen";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { loadSavedTranslation } from "@/data/bible";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+loadSavedTranslation();
 
 /** Decides between the locked PIN screen and the real app, once app-lock
  * settings have loaded. Kept separate from RootLayout so it can read the
@@ -32,6 +36,7 @@ function Gate() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="note/[id]" options={{ presentation: "card" }} />
+        <Stack.Screen name="legal" options={{ presentation: "card" }} />
       </Stack>
       {enabled && locked ? <LockScreen onUnlock={unlock} /> : null}
     </>
@@ -52,10 +57,16 @@ export default function RootLayout() {
   }
 
   return (
-    <AlertProvider>
-      <AppLockProvider>
-        <Gate />
-      </AppLockProvider>
-    </AlertProvider>
+    <ErrorBoundary>
+      <AlertProvider>
+        <AppLockProvider>
+          <Gate />
+        </AppLockProvider>
+      </AlertProvider>
+      {/* Anonymous, aggregate page-view analytics only — no note content,
+          no personal data. Web only: the underlying package assumes DOM
+          APIs that don't exist on native. */}
+      {Platform.OS === "web" ? <Analytics /> : null}
+    </ErrorBoundary>
   );
 }

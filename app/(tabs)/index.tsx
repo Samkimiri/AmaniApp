@@ -11,6 +11,7 @@ import { VerseOfTheDayCard } from "@/components/VerseOfTheDayCard";
 import { InstallBanner } from "@/components/InstallBanner";
 import { useNotes } from "@/hooks/useNotes";
 import { getVerseOfTheDay } from "@/data/verseOfTheDay";
+import { useActiveTranslation } from "@/data/bible";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -22,7 +23,8 @@ function greeting(): string {
 export default function HomeScreen() {
   const { notes } = useNotes();
   const latest = notes[0];
-  const verseOfTheDay = React.useMemo(() => getVerseOfTheDay(), []);
+  const translationCode = useActiveTranslation();
+  const verseOfTheDay = React.useMemo(() => getVerseOfTheDay(), [translationCode]);
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",

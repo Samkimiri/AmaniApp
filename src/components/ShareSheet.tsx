@@ -6,7 +6,7 @@ import * as Print from "expo-print";
 import * as Clipboard from "expo-clipboard";
 import { colors } from "@/theme/colors";
 import { fontFamily } from "@/theme/typography";
-import { ClipboardIcon, CloseIcon, DocumentIcon, ImageCardIcon, LinkIcon, OpenBookIcon } from "./icons";
+import { ClipboardIcon, CloseIcon, DocumentIcon, ImageCardIcon, LinkIcon, OpenBookIcon, TrashIcon } from "./icons";
 import { firstVerseBlock, noteToHtml, noteToPlainText, SermonNote } from "@/types/note";
 import { useAlert } from "@/context/AlertContext";
 
@@ -14,6 +14,7 @@ interface ShareSheetProps {
   visible: boolean;
   onClose: () => void;
   note: SermonNote;
+  onDelete: () => void;
 }
 
 /** Triggers a real browser download of a data: URI — web only. */
@@ -48,7 +49,7 @@ function printNoteInNewTab(note: SermonNote) {
  * another person's copy of the app needs a small sync backend this
  * concept build doesn't include yet (see the README).
  */
-export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
+export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps) {
   const shotRef = useRef<ViewShot>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const verse = firstVerseBlock(note);
@@ -116,6 +117,18 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
     });
   }
 
+  function confirmDelete() {
+    onClose();
+    showAlert({
+      title: "Delete this note?",
+      message: `"${note.title || "Untitled note"}" will be permanently deleted from this device. This can't be undone.`,
+      actions: [
+        { label: "Delete", style: "destructive", onPress: onDelete },
+        { label: "Cancel", style: "cancel" },
+      ],
+    });
+  }
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} />
@@ -169,6 +182,14 @@ export function ShareSheet({ visible, onClose, note }: ShareSheetProps) {
           title="Amani link"
           subtitle="Opens inside Amani for a cell-group member who has the app"
           onPress={amaniLink}
+        />
+        <Row
+          icon={<TrashIcon color={colors.danger} />}
+          iconBg="#FBEAE6"
+          title="Delete note"
+          subtitle="Permanently remove this note from this device"
+          onPress={confirmDelete}
+          destructive
           last
         />
       </View>
@@ -208,6 +229,7 @@ function Row({
   onPress,
   busy,
   last,
+  destructive,
 }: {
   icon: React.ReactNode;
   iconBg: string;
@@ -216,6 +238,7 @@ function Row({
   onPress: () => void;
   busy?: boolean;
   last?: boolean;
+  destructive?: boolean;
 }) {
   return (
     <Pressable
@@ -225,7 +248,7 @@ function Row({
     >
       <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>{icon}</View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.rowTitle}>{title}</Text>
+        <Text style={[styles.rowTitle, destructive && { color: colors.danger }]}>{title}</Text>
         <Text style={styles.rowSubtitle}>{busy ? "Preparing…" : subtitle}</Text>
       </View>
     </Pressable>

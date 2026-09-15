@@ -3,7 +3,7 @@
     "name": "Amani",
     "slug": "amani-app",
     "scheme": "amani",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,14 +15,16 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.amaniapp.mobile"
+      "bundleIdentifier": "com.amaniapp.mobile",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1F3A5F"
       },
-      "package": "com.amaniapp.mobile"
+      "package": "com.amaniapp.mobile",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png",

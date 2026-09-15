@@ -70,22 +70,42 @@ async function getWebClip(id: string): Promise<Blob | undefined> {
 
 /**
  * Call this immediately after a recording finishes, with the transient
- * URI expo-av handed back. Returns a URI that's safe to store in a note
- * and reopen in a future session.
+ * URI expo-av handed back, to move it into storage that actually
+ * persists. Also doubles as the restore path for a backup file: `source`
+ * may be a `data:` URI (from `exportRecordingAsDataUrl` below) instead of
+ * a fresh recording's blob:/file: URI — both are handled the same way.
  */
-export async function persistRecording(tempUri: string, blockId: string): Promise<string> {
+export async function persistRecording(source: string, blockId: string): Promise<string> {
   if (Platform.OS === "web") {
-    const blob = await fetch(tempUri).then((r) => r.blob());
+    const blob = await fetch(source).then((r) => r.blob());
     await putWebClip(blockId, blob);
-    if (tempUri.startsWith("blob:")) URL.revokeObjectURL(tempUri);
+    if (source.startsWith("blob:")) URL.revokeObjectURL(source);
     return `${WEB_URI_PREFIX}${blockId}`;
   }
 
-  if (!NATIVE_AUDIO_DIR) return tempUri; // no persistent directory available — best effort
+  if (!NATIVE_AUDIO_DIR) return source; // no persistent directory available — best effort
   await FileSystem.makeDirectoryAsync(NATIVE_AUDIO_DIR, { intermediates: true }).catch(() => {});
   const dest = `${NATIVE_AUDIO_DIR}${blockId}.m4a`;
-  await FileSystem.copyAsync({ from: tempUri, to: dest });
+  if (source.startsWith("data:")) {
+    const base64 = source.slice(source.indexOf(",") + 1);
+    await FileSystem.writeAsStringAsync(dest, base64, { encoding: FileSystem.EncodingType.Base64 });
+  } else {
+    await FileSystem.copyAsync({ from: source, to: dest });
+  }
   return dest;
+}
+
+/** The reverse of `persistRecording` — reads a stored clip back out as a
+ * self-contained base64 data: URI, for embedding in an exported backup
+ * file (which can't reference IndexedDB or the app's own file storage). */
+export async function exportRecordingAsDataUrl(uri: string): Promise<string> {
+  if (Platform.OS === "web") {
+    const dataUrl = await resolvePlayableUriAsDataUrl(uri);
+    if (!dataUrl) throw new Error("This recording is no longer available.");
+    return dataUrl;
+  }
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  return `data:audio/m4a;base64,${base64}`;
 }
 
 /**
@@ -101,6 +121,24 @@ export async function resolvePlayableUri(uri: string): Promise<string> {
     return URL.createObjectURL(blob);
   }
   return uri;
+}
+
+/** Deletes a stored recording. Call this when the note (or the audio
+ * block itself) is deleted, so storage doesn't accumulate orphaned clips. */
+export async function deleteRecording(uri: string): Promise<void> {
+  if (Platform.OS === "web") {
+    if (!uri.startsWith(WEB_URI_PREFIX)) return;
+    const id = uri.slice(WEB_URI_PREFIX.length);
+    const db = await openWebDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(WEB_STORE_NAME, "readwrite");
+      tx.objectStore(WEB_STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    return;
+  }
+  await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
 }
 
 /**

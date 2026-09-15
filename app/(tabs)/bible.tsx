@@ -4,13 +4,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { colors } from "@/theme/colors";
 import { fontFamily, textStyles } from "@/theme/typography";
-import { SearchIcon, BookmarkIcon, HighlightIcon, PlusIcon } from "@/components/icons";
+import { SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, PlusIcon } from "@/components/icons";
 import {
+  AVAILABLE_TRANSLATIONS,
   getVerse,
   getVerseCandidates,
   searchKeyword,
   SAMPLE_CROSS_REFERENCES,
+  setActiveTranslation,
   TRANSLATION,
+  useActiveTranslation,
   VerseResult,
 } from "@/data/bible";
 import { notesStore } from "@/data/notesStore";
@@ -33,6 +36,30 @@ export default function BibleScreen() {
   const [isHighlighted, setIsHighlighted] = useState(false);
   const [savedBookmarks, setSavedBookmarks] = useState<VerseMark[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const translationCode = useActiveTranslation();
+  const [switchingTranslation, setSwitchingTranslation] = useState(false);
+
+  async function switchTranslation() {
+    const idx = AVAILABLE_TRANSLATIONS.findIndex((t) => t.code === translationCode);
+    const next = AVAILABLE_TRANSLATIONS[(idx + 1) % AVAILABLE_TRANSLATIONS.length];
+    // The very first switch to a not-yet-used translation reads and
+    // parses a multi-MB file, so this isn't always instant.
+    setSwitchingTranslation(true);
+    await setActiveTranslation(next.code);
+    setSwitchingTranslation(false);
+  }
+
+  // Re-fetch the currently viewed verse's text when the translation
+  // changes, rather than resetting back to the default verse.
+  useEffect(() => {
+    const text = getVerse(selected.book, selected.chapter, selected.verse);
+    if (text !== undefined) setSelected((s) => ({ ...s, text }));
+    if (query.trim()) {
+      const asReference = getVerseCandidates(query, 8);
+      setResults(asReference.length > 0 ? asReference : searchKeyword(query, 20));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translationCode]);
 
   useEffect(() => {
     bookmarks.isMarked(selected.reference).then(setIsBookmarked);
@@ -63,7 +90,8 @@ export default function BibleScreen() {
     return refs
       .map((ref) => getVerseCandidates(ref, 1)[0])
       .filter((v): v is VerseResult => Boolean(v));
-  }, [selected.reference]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected.reference, translationCode]);
 
   function choose(v: VerseResult) {
     setSelected(v);
@@ -104,9 +132,16 @@ export default function BibleScreen() {
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
         <Text style={textStyles.screenTitle}>Bible</Text>
-        <View style={styles.translationBadge}>
-          <Text style={styles.translationText}>{TRANSLATION.code}</Text>
-        </View>
+        <Pressable
+          style={[styles.translationBadge, switchingTranslation && { opacity: 0.6 }]}
+          onPress={switchTranslation}
+          disabled={switchingTranslation}
+          accessibilityRole="button"
+          accessibilityLabel={`Switch translation, currently ${TRANSLATION.code}`}
+        >
+          <Text style={styles.translationText}>{switchingTranslation ? "Loading…" : TRANSLATION.code}</Text>
+          {switchingTranslation ? null : <ChevronDownIcon size={12} strokeWidth={3} />}
+        </Pressable>
       </View>
 
       <View style={styles.searchBar}>
@@ -228,11 +263,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   translationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     backgroundColor: colors.navy,
     paddingHorizontal: 14,
     height: 40,
     borderRadius: 999,
-    alignItems: "center",
     justifyContent: "center",
   },
   actionButtonPressed: { opacity: 0.6 },

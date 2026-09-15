@@ -1,13 +1,25 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/theme/colors";
 import { fontFamily, textStyles } from "@/theme/typography";
-import { OpenBookIcon, UserIcon } from "@/components/icons";
+import { ChevronRightIcon, DocumentIcon, OpenBookIcon, UserIcon } from "@/components/icons";
 import { AppLockSection } from "@/components/AppLockSection";
-import { TRANSLATION } from "@/data/bible";
+import { BackupSection } from "@/components/BackupSection";
+import { AVAILABLE_TRANSLATIONS, setActiveTranslation, TRANSLATION, useActiveTranslation } from "@/data/bible";
 
 export default function ProfileScreen() {
+  const translationCode = useActiveTranslation(); // subscribes so this screen re-renders when the Bible tab switches translations
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+
+  async function chooseTranslation(code: "KJV" | "WEB") {
+    if (code === translationCode) return;
+    setSwitchingTo(code);
+    await setActiveTranslation(code);
+    setSwitchingTo(null);
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
@@ -34,12 +46,38 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
+          <View style={styles.translationChipRow}>
+            {AVAILABLE_TRANSLATIONS.map((t) => (
+              <Pressable
+                key={t.code}
+                style={[styles.translationChip, translationCode === t.code && styles.translationChipActive]}
+                onPress={() => chooseTranslation(t.code)}
+                disabled={switchingTo !== null}
+              >
+                <Text
+                  style={[
+                    styles.translationChipText,
+                    translationCode === t.code && styles.translationChipTextActive,
+                  ]}
+                >
+                  {switchingTo === t.code ? "Loading…" : t.code}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <AppLockSection />
+        <BackupSection />
+
+        <Pressable style={styles.linkRow} onPress={() => router.push("/legal")}>
+          <DocumentIcon size={16} color={colors.textSecondary} />
+          <Text style={styles.linkRowText}>Privacy &amp; terms</Text>
+          <ChevronRightIcon size={16} />
+        </Pressable>
 
         <Text style={styles.footnote}>
-          Amani &middot; v0.1.0 (concept build){"\n"}
+          Amani &middot; v1.0.0{"\n"}
           Scripture text: {TRANSLATION.name}, public domain.{"\n"}
           Typeset in Newsreader &amp; Plus Jakarta Sans (SIL Open Font License).
         </Text>
@@ -83,6 +121,33 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
   rowSubtitle: { fontFamily: fontFamily.sansRegular, fontSize: 12.5, color: colors.textMuted, marginTop: 2 },
+  translationChipRow: { flexDirection: "row", gap: 8, marginTop: 14 },
+  translationChip: {
+    height: 34,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  translationChipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+  translationChipText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.textSecondary },
+  translationChipTextActive: { color: colors.white },
+  linkRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+  },
+  linkRowText: { flex: 1, fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
   footnote: {
     fontFamily: fontFamily.sansRegular,
     fontSize: 11.5,

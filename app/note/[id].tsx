@@ -39,6 +39,8 @@ function isBlankNote(note: SermonNote): boolean {
   return (
     !note.title.trim() &&
     !note.church?.trim() &&
+    !note.preacher?.trim() &&
+    !(note.tags && note.tags.length > 0) &&
     note.blocks.every((b) => b.type === "text" && !b.text.trim())
   );
 }
@@ -64,6 +66,8 @@ export default function NoteEditorScreen() {
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
   const [verseBarOpen, setVerseBarOpen] = useState(false);
   const [verseQuery, setVerseQuery] = useState("");
+  const [tagBarOpen, setTagBarOpen] = useState(false);
+  const [tagInput, setTagInput] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const [shareOpen, setShareOpen] = useState(false);
   const showAlert = useAlert();
@@ -138,6 +142,21 @@ export default function NoteEditorScreen() {
     appendBlock({ id: newId(), type: "verse", reference: v.reference, text: v.text });
     setVerseQuery("");
     setVerseBarOpen(false);
+  }
+
+  function addTag() {
+    const tag = tagInput.trim().replace(/,$/, "");
+    if (!tag) return;
+    setNote((n) => {
+      const existing = n.tags ?? [];
+      if (existing.some((t) => t.toLowerCase() === tag.toLowerCase())) return n;
+      return { ...n, tags: [...existing, tag] };
+    });
+    setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    setNote((n) => ({ ...n, tags: (n.tags ?? []).filter((t) => t !== tag) }));
   }
 
   function addPhoto() {
@@ -331,6 +350,23 @@ export default function NoteEditorScreen() {
             style={styles.titleInput}
             multiline
           />
+          <TextInput
+            value={note.preacher ?? ""}
+            onChangeText={(preacher) => setNote((n) => ({ ...n, preacher }))}
+            placeholder="Add preacher"
+            placeholderTextColor={colors.textFaint}
+            style={styles.preacherInput}
+          />
+          {note.tags && note.tags.length > 0 ? (
+            <View style={styles.tagChipRow}>
+              {note.tags.map((tag) => (
+                <Pressable key={tag} style={styles.tagChip} onPress={() => removeTag(tag)}>
+                  <Text style={styles.tagChipText}>{tag}</Text>
+                  <Text style={styles.tagChipRemove}>×</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
 
           {note.blocks.map((block) => {
             if (block.type === "text") {
@@ -413,6 +449,38 @@ export default function NoteEditorScreen() {
           </View>
         ) : null}
 
+        {tagBarOpen ? (
+          <View style={styles.verseBar}>
+            {note.tags && note.tags.length > 0 ? (
+              <View style={styles.tagChipRow}>
+                {note.tags.map((tag) => (
+                  <Pressable key={tag} style={styles.tagChip} onPress={() => removeTag(tag)}>
+                    <Text style={styles.tagChipText}>{tag}</Text>
+                    <Text style={styles.tagChipRemove}>×</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+            <TextInput
+              autoFocus
+              value={tagInput}
+              onChangeText={(text) => {
+                if (text.endsWith(",")) {
+                  setTagInput(text);
+                  addTag();
+                } else {
+                  setTagInput(text);
+                }
+              }}
+              onSubmitEditing={addTag}
+              placeholder="Type a tag and press enter — e.g. Prayer"
+              placeholderTextColor={colors.textFaint}
+              style={styles.verseBarInput}
+              returnKeyType="done"
+            />
+          </View>
+        ) : null}
+
         <View style={styles.toolbar}>
           <Pressable
             style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
@@ -439,14 +507,12 @@ export default function NoteEditorScreen() {
             <OpenBookIcon size={18} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
           </Pressable>
           <Pressable
-            style={styles.toolbarButton}
-            onPress={() =>
-              showAlert({ title: "Tags", message: "Organizing notes by tag isn't wired up in this concept build yet." })
-            }
+            style={[styles.toolbarButton, tagBarOpen && styles.toolbarButtonActive]}
+            onPress={() => setTagBarOpen((v) => !v)}
             accessibilityRole="button"
             accessibilityLabel="Tags"
           >
-            <TagIcon size={18} />
+            <TagIcon size={18} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
           </Pressable>
           <View style={{ flex: 1 }} />
           <View style={styles.savedRow}>
@@ -456,7 +522,15 @@ export default function NoteEditorScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      <ShareSheet visible={shareOpen} onClose={() => setShareOpen(false)} note={note} />
+      <ShareSheet
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        note={note}
+        onDelete={async () => {
+          await notesStore.remove(note.id);
+          router.back();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -490,6 +564,25 @@ const styles = StyleSheet.create({
   dateText: { fontFamily: fontFamily.sansMedium, fontSize: 11, color: colors.textMuted, marginTop: 1 },
   content: { paddingHorizontal: 24, paddingTop: 6, paddingBottom: 24, gap: 14 },
   titleInput: { fontFamily: fontFamily.serifBold, fontSize: 22, lineHeight: 29, color: colors.textPrimary, padding: 0 },
+  preacherInput: {
+    fontFamily: fontFamily.sansMedium,
+    fontSize: 13,
+    color: colors.textSecondary,
+    padding: 0,
+    marginTop: -8,
+  },
+  tagChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tagChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.verseBg,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    height: 30,
+  },
+  tagChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.verseText },
+  tagChipRemove: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.verseText, opacity: 0.6 },
   bodyInput: { fontFamily: fontFamily.sansRegular, fontSize: 15, lineHeight: 26, color: colors.textSecondary, padding: 0 },
   imageBlock: { borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   image: { width: "100%", height: 180, backgroundColor: "#EFE7D8" },

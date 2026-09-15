@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SermonNote } from "@/types/note";
+import { deleteRecording } from "@/data/audioStorage";
 
 const STORAGE_KEY = "amani.notes.v1";
 
@@ -43,6 +44,11 @@ export const notesStore = {
 
   async remove(id: string): Promise<void> {
     const notes = await readAll();
+    const target = notes.find((n) => n.id === id);
+    if (target) {
+      const audioBlocks = target.blocks.filter((b): b is Extract<typeof b, { type: "audio" }> => b.type === "audio");
+      await Promise.all(audioBlocks.map((b) => deleteRecording(b.uri))).catch(() => {});
+    }
     await writeAll(notes.filter((n) => n.id !== id));
   },
 };

@@ -1,38 +1,57 @@
 # Amani — sermon notes + offline Bible
 
-A concept build of a mobile app for taking sermon notes and reading
-Scripture, built with Expo (React Native) + TypeScript. This turns the
-earlier product spec and UI mockups into real, runnable code — a
-starting point to keep building in Claude Code, Cursor, or any editor.
+A mobile-and-web app for taking sermon notes and reading Scripture, built
+with Expo (React Native) + TypeScript. No account, no server — every
+note, photo, and recording stays on the device it was created on.
+
+Deployed at [amani-app.vercel.app](https://amani-app.vercel.app) (web/PWA — installable via the browser's "Add to Home Screen" or install prompt). iOS/Android builds haven't been produced yet — see "Native builds" below.
 
 ## What's implemented
 
-- **Home** — a "New sermon note" shortcut and a preview of your most
-  recent note, read from on-device storage.
-- **Note editor** — a title, free-form text, and two block types you can
-  insert inline as you write:
+- **Home** — a "New sermon note" shortcut, an install prompt (web), a
+  daily verse from the offline Bible, and a preview of your most recent
+  note.
+- **Note editor** — title, preacher, tags, and free-form text, with
+  inline blocks you insert as you write:
   - **Verses** — type a shorthand reference (`2 cor 5:7`, `jn 3:16`,
-    `romans 8`) into the insert bar and tap a live suggestion to drop the
-    full verse text into the note.
-  - **Photos** — attach a picture (e.g. a photographed sermon slide)
-    from the device's photo library.
-  - Notes autosave locally as you type (`AsyncStorage`), no account
-    needed.
+    `romans 8`) into the insert bar and tap a live suggestion.
+  - **Photos** — take one with the camera or choose one from your
+    library.
+  - **Audio** — record sermon audio directly into the note, with
+    playback. Recordings are moved into durable storage (IndexedDB on
+    web, the app's document directory on native) so they survive
+    closing and reopening the app — the location expo-av first writes
+    to is *not* guaranteed to persist otherwise.
+  - Notes autosave locally as you type (`AsyncStorage`); blank notes
+    aren't kept.
+  - Hold a note in the list, or use the delete option in its share
+    sheet, to remove it.
 - **Bible tab** — search by keyword or reference and read the full text
-  offline; a small hand-picked cross-reference list demonstrates
-  "related verses" for a few well-known passages.
-- **Share sheet** — four real, working formats from the note editor:
-  1. **Verse card (image)** — renders a styled card off-screen and
-     shares it as a PNG (`react-native-view-shot` + `expo-sharing`).
-  2. **Full note (PDF)** — builds simple HTML from the note and exports
-     it as a PDF (`expo-print` + `expo-sharing`).
-  3. **Plain text** — copies the note to the clipboard
-     (`expo-clipboard`).
-  4. **Amani link** — an honest stub. Opening a note inside someone
-     else's copy of the app needs a small sync backend (accounts, a
-     server, a real deep-link resolver), which is out of scope for this
-     concept build — tapping it explains that rather than pretending to
-     work.
+  offline, in either of two bundled translations (switch via the badge
+  in the header, or in Profile). Bookmark or highlight any verse, and
+  jump back to your bookmarks from the chip row. A hand-picked
+  cross-reference list demonstrates "related verses" for well-known
+  passages.
+- **Search & organization** — search across your own notes (title,
+  preacher, tags, and body text) from the Notes tab, and filter by tag.
+- **App lock** — an optional on-device PIN (Profile → App lock), with a
+  configurable auto-lock delay. No account behind it — it's a local
+  passcode, not authentication against a server.
+- **Backup** — export every note (with photos and recordings embedded)
+  as one JSON file, and restore from it later, on this device or a new
+  one. This is the only way to recover anything if the device is lost
+  or its storage is cleared, since there's no server copy.
+- **Share sheet** — from the note editor: a verse-card image, a full
+  note as PDF (native) or a formatted print-to-PDF tab (web), plain
+  text, and delete. "Amani link" (opening a note in someone else's copy
+  of the app) is an honest stub — see "What's intentionally unfinished"
+  below.
+- **PWA** — installable, works fully offline after one successful load
+  (service worker precaches the app shell and current JS bundle), with
+  a manifest, social preview card, and Vercel Analytics (web only, no
+  note content).
+- **Privacy & terms** — `/legal`, describing exactly what's stored
+  where (nothing leaves the device).
 
 ## Getting started
 
@@ -41,8 +60,8 @@ npm install
 npx expo start
 ```
 
-Then scan the QR code with Expo Go (iOS/Android), or press `i` / `a` for
-a simulator. Requires Node 18+.
+Then scan the QR code with Expo Go (iOS/Android), press `i` / `a` for a
+simulator, or `w` for a browser. Requires Node 18+.
 
 ```bash
 npm run typecheck   # TypeScript, no emit
@@ -54,67 +73,95 @@ npm run typecheck   # TypeScript, no emit
 app/                  Screens (Expo Router — file-based routing)
   (tabs)/             Home, Notes, Bible, Profile
   note/[id].tsx        Note editor (id="new" for a fresh note)
+  legal.tsx            Privacy policy + terms
 src/
   theme/              Colors + typography tokens
-  components/         Shared UI: buttons, cards, icons, the share sheet
-  data/               Bible engine + AsyncStorage notes CRUD
-    bundled/kjv.json   The full offline Bible text (see Licensing)
+  components/         Shared UI: buttons, cards, icons, share sheet, app lock, backup
+  context/            AlertContext (cross-platform alert/action-sheet), AppLockContext
+  data/               Bible engine, notes/backup/audio storage, bookmarks
+    bundled/           Bible text — kjv.json (inlined), web.bibledata (lazy asset, see below)
+  hooks/               useNotes, useAppLock, useInstallPrompt
   types/               Note/block types + text/HTML rendering helpers
+public/                PWA files served as-is at the web root (manifest, service worker, index.html template, robots.txt)
+metro.config.js        Package-exports resolution + the second translation's asset extension (see comments in the file)
+eas.json               EAS Build profile scaffold — not yet used to produce a real build (see "Native builds")
 ```
+
+## Native builds
+
+`eas.json` and `app.json`'s `ios.buildNumber`/`android.versionCode` are
+in place, but no `.ipa`/`.aab` has actually been built or submitted.
+That requires:
+
+```bash
+npx eas login          # your own Expo account
+npx eas build --platform android --profile preview   # or ios
+```
+
+— which in turn needs an Apple Developer account (iOS) and/or a Google
+Play Console account (Android) for real submission, plus the store
+listing assets (screenshots, description) and privacy questionnaires
+those consoles ask for. None of that is set up here.
 
 ## Licensing & copyright — what's safe to ship as-is, and what isn't
 
-This build was put together specifically to avoid copyright problems.
-Here's what's in it and why each piece is clear to use:
+- **Fonts — Newsreader & Plus Jakarta Sans.** Google Fonts, SIL Open
+  Font License: free to use, bundle, and modify commercially, no
+  royalties, no attribution requirement.
+- **Bible text.** Both bundled translations are public domain:
+  - **KJV** (King James Version, 1611) — `src/data/bundled/kjv.json`,
+    assembled from a public-domain KJV text repackaged as JSON.
+  - **WEB** (World English Bible) — `src/data/bundled/web.bibledata`,
+    converted from the public dataset at
+    [github.com/TehShrike/world-english-bible](https://github.com/TehShrike/world-english-bible);
+    the WEB is explicitly released copyright-free by its translators.
+    A handful of verse numbers in this dataset are well-documented
+    manuscript variants (e.g. Acts 8:37, Romans 16:25–27) that modern
+    translations typically footnote rather than include — the bundled
+    file notes this directly in those verse slots rather than leaving
+    them blank.
 
-- **Fonts — Newsreader & Plus Jakarta Sans.** Both are Google Fonts
-  released under the **SIL Open Font License**: free to use, bundle,
-  and modify in a commercial app, no royalties, no attribution
-  requirement. Chosen deliberately over Inter/Roboto/Arial so the app
-  doesn't read as a generic template, while staying clean and legible
-  for scripture and long-form notes.
-- **Bible text — King James Version.** The bundled
-  `src/data/bundled/kjv.json` (all 66 books, ~31,000 verses) is the
-  **King James Version**, first published in 1611 and in the **public
-  domain**. It was assembled from a public-domain KJV text repackaged
-  as JSON. This is the only translation bundled, and it's safe to ship,
-  modify, and redistribute freely.
+  `web.bibledata` is plain JSON despite its unusual extension — see the
+  comment in `metro.config.js` for why (two ~4MB translations both
+  inlined as JS crashes the Hermes bytecode compiler on Android; this
+  one loads lazily as a binary asset instead, the first time someone
+  switches to it).
 - **Icons.** Every icon in `src/components/icons.tsx` is hand-drawn SVG
-  path data written for this project — not pulled from an icon font or
-  third-party icon library, so there's nothing to license or credit.
-- **App icon / splash.** Generated from scratch (a simple original
-  open-book mark in the app's navy/gold palette) — not a modified
-  version of any existing logo or brand asset.
-- **Sample content.** "Faith Bible Church" and "Pastor John Mwangi" are
-  fictional placeholders for the demo note — not a real church or
-  person.
+  path data written for this project — nothing to license or credit.
+- **App icon / splash.** Original artwork in the app's navy/gold
+  palette, not derived from any existing logo or brand asset.
+- **Sample content.** Any names shown in placeholder/demo notes are
+  fictional, not a real church or person.
 
-**What would need attention before a real launch:**
+**What would need attention before a public launch:**
 
-- **Adding a modern translation (NIV, ESV, NLT, NKJV, etc.)** — these
-  are copyrighted by their publishers (Biblica, Crossway, Tyndale,
-  Thomas Nelson). You'd need a commercial license or API agreement
-  before bundling or displaying their text. Other public-domain
-  translations (ASV 1901, or the WEB — World English Bible, explicitly
-  released copyright-free) can be added the same way the KJV data was
-  built here, with no licensing step required.
-- **The app name "Amani."** This is a working name carried over from
-  the concept doc, not a cleared trademark. Run a trademark search in
-  your target markets before committing to it publicly.
+- **The app name "Amani."** Carried over as a working name from the
+  original concept doc — not a cleared trademark. Run a trademark
+  search in your target markets before committing to it publicly; it
+  also gates picking a custom domain.
+- **Adding a modern copyrighted translation** (NIV, ESV, NLT, NKJV,
+  etc.) requires a commercial license/API agreement from its publisher
+  (Biblica, Crossway, Tyndale, Thomas Nelson). The ASV (1901) is another
+  public-domain option addable the same way KJV/WEB were.
 - **Cross-reference data** (`SAMPLE_CROSS_REFERENCES` in
-  `src/data/bible.ts`) is a small illustrative sample, not a full
-  dataset — swap in a complete public-domain set (e.g. the Treasury of
-  Scripture Knowledge) before shipping this feature for real.
-- **Audio recording and tagging** — the toolbar buttons for these are
-  present but intentionally unwired (they show an explanatory alert)
-  since they weren't part of this pass; see "Next steps" below.
+  `src/data/bible.ts`) is a curated sample of well-known pairings, not a
+  full dataset — swap in something like the public-domain Treasury of
+  Scripture Knowledge before shipping this feature as comprehensive.
+- **The `/legal` page's contact line** is a placeholder — fill in a real
+  contact method before publishing it.
 
-## Next steps
+## What's intentionally unfinished
 
-- Wire up sermon audio recording (e.g. `expo-av`) with timestamped
-  notes, as scoped in the original concept spec.
-- Add tagging/organization by preacher, series, and date.
-- Add the WEB or ASV translation as a second offline option.
-- Build the small backend needed to make the "Amani link" share format
-  real (accounts + a sync store), or drop that option until it exists.
-- Replace the sample cross-reference list with a full dataset.
+These show an honest "not built yet" message rather than pretending to
+work:
+
+- **Tags exist, but there's no filter/organize-by-preacher view beyond
+  the Notes tab's own tag chips** — a fuller browse-by-church/preacher
+  view is a natural next step.
+- **"Amani link"** (share sheet) — opening a note directly inside
+  someone else's copy of the app needs real accounts and a sync
+  backend, which is out of scope here.
+- **Dark mode** — not implemented. `app.json` sets
+  `userInterfaceStyle: light`; adding a real theme switch means
+  converting every screen's styles from module-level `StyleSheet.create`
+  calls to theme-reactive ones, which hasn't been done.

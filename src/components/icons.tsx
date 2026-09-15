@@ -230,6 +230,18 @@ export function CloseIcon({ size = 18, color = "#5B6472", strokeWidth = 2 }: Ico
   );
 }
 
+export function TrashIcon({ size = 18, color = "#5B6472", strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M5 7h14" />
+      <Path d="M9 7V4.8c0-.4.3-.8.8-.8h4.4c.4 0 .8.3.8.8V7" />
+      <Path d="M7 7l.8 12.2c0 .5.5.8 1 .8h6.4c.5 0 .9-.3 1-.8L17 7" />
+      <Line x1={10} y1={10.5} x2={10} y2={16.5} />
+      <Line x1={14} y1={10.5} x2={14} y2={16.5} />
+    </Svg>
+  );
+}
+
 export function LockIcon({ size = 20, color = "#1F3A5F", strokeWidth = 1.8 }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>

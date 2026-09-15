@@ -5,7 +5,15 @@ import { fontFamily } from "@/theme/typography";
 import { OpenBookIcon, WaveformIcon } from "./icons";
 import { firstAudioBlock, firstVerseBlock, formatDuration, SermonNote } from "@/types/note";
 
-export function NoteCard({ note, onPress }: { note: SermonNote; onPress: () => void }) {
+export function NoteCard({
+  note,
+  onPress,
+  onLongPress,
+}: {
+  note: SermonNote;
+  onPress: () => void;
+  onLongPress?: () => void;
+}) {
   const verse = firstVerseBlock(note);
   const audio = firstAudioBlock(note);
   const previewBlock = note.blocks.find(
@@ -14,7 +22,12 @@ export function NoteCard({ note, onPress }: { note: SermonNote; onPress: () => v
   const preview = previewBlock?.text;
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={400}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    >
       <Text style={styles.meta}>
         {[note.church, note.preacher].filter(Boolean).join(" · ") || "Personal note"}
       </Text>
@@ -26,7 +39,7 @@ export function NoteCard({ note, onPress }: { note: SermonNote; onPress: () => v
           {preview}
         </Text>
       ) : null}
-      {verse || audio ? (
+      {verse || audio || (note.tags && note.tags.length > 0) ? (
         <View style={styles.pillRow}>
           {verse ? (
             <View style={styles.versePill}>
@@ -40,6 +53,11 @@ export function NoteCard({ note, onPress }: { note: SermonNote; onPress: () => v
               <Text style={styles.audioPillText}>{formatDuration(audio.durationMillis)}</Text>
             </View>
           ) : null}
+          {(note.tags ?? []).map((tag) => (
+            <View key={tag} style={styles.tagPill}>
+              <Text style={styles.tagPillText}>#{tag}</Text>
+            </View>
+          ))}
         </View>
       ) : null}
     </Pressable>
@@ -106,5 +124,17 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.sansBold,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  tagPill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.background,
+  },
+  tagPillText: {
+    fontFamily: fontFamily.sansBold,
+    fontSize: 11.5,
+    color: colors.textFaint,
   },
 });

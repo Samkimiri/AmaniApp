@@ -45,6 +45,7 @@ export interface SermonNote {
   title: string;
   church?: string;
   preacher?: string;
+  tags?: string[];
   /** ISO date string for the service this note belongs to */
   date: string;
   blocks: NoteBlock[];
@@ -67,6 +68,7 @@ export function noteToPlainText(note: SermonNote): string {
   lines.push(note.title || "Untitled note");
   const meta = [note.church, note.preacher, note.date].filter(Boolean).join(" · ");
   if (meta) lines.push(meta);
+  if (note.tags && note.tags.length > 0) lines.push(note.tags.map((t) => `#${t}`).join(" "));
   lines.push("");
   for (const block of note.blocks) {
     if (block.type === "text" && block.text.trim()) {
@@ -87,6 +89,10 @@ export function noteToPlainText(note: SermonNote): string {
 /** Simple HTML rendering of a note, used for the PDF share format. */
 export function noteToHtml(note: SermonNote): string {
   const meta = [note.church, note.preacher, note.date].filter(Boolean).join(" &middot; ");
+  const tagsLine =
+    note.tags && note.tags.length > 0
+      ? `<div style="margin-top:4px;font-size:11px;color:#B8860B;">${note.tags.map((t) => `#${escapeHtml(t)}`).join("&nbsp;&nbsp;")}</div>`
+      : "";
   const body = note.blocks
     .map((block) => {
       if (block.type === "text" && block.text.trim()) {
@@ -118,7 +124,9 @@ export function noteToHtml(note: SermonNote): string {
   <html><head><meta charset="utf-8" /></head>
   <body style="font-family:-apple-system,Helvetica,Arial,sans-serif;padding:32px;color:#182233;">
     <h1 style="font-size:22px;margin-bottom:4px;">${escapeHtml(note.title || "Untitled note")}</h1>
-    <div style="font-size:12px;color:#9AA3AE;margin-bottom:20px;">${meta}</div>
+    <div style="font-size:12px;color:#9AA3AE;">${meta}</div>
+    ${tagsLine}
+    <div style="margin-bottom:20px;"></div>
     ${body}
     <div style="margin-top:32px;font-size:11px;color:#B9C4D3;">Shared from Amani</div>
   </body></html>`;
