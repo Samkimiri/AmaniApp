@@ -29,9 +29,9 @@ Deployed at [amani-app.vercel.app](https://amani-app.vercel.app) (web/PWA — in
 - **Bible tab** — search by keyword or reference and read the full text
   offline, in either of two bundled translations (switch via the badge
   in the header, or in Profile). Bookmark or highlight any verse, and
-  jump back to your bookmarks from the chip row. A hand-picked
-  cross-reference list demonstrates "related verses" for well-known
-  passages.
+  jump back to your bookmarks from the chip row. Cross-references cover
+  ~29,000 verses (93% of the Bible), adapted from the Treasury of
+  Scripture Knowledge.
 - **Search & organization** — search across your own notes (title,
   preacher, tags, and body text) from the Notes tab, and filter by tag.
 - **App lock** — an optional on-device PIN (Profile → App lock), with a
@@ -126,6 +126,20 @@ those consoles ask for. None of that is set up here.
   inlined as JS crashes the Hermes bytecode compiler on Android; this
   one loads lazily as a binary asset instead, the first time someone
   switches to it).
+- **Cross-references** — `src/data/bundled/cross-references.bibledata`
+  (also a lazy asset, same reason as above), covering ~29,000 verses.
+  Converted from the Treasury of Scripture Knowledge (public domain) via
+  the structured dataset at
+  [github.com/CrossReferences-org/bible-cross-references](https://github.com/CrossReferences-org/bible-cross-references),
+  which is itself licensed **CC BY 4.0** — attribution to
+  CrossReferences.org is included in Profile and `/legal`; keep that
+  credit if you redistribute this data. That dataset anchors references
+  to specific phrases within a verse and deliberately curates rather
+  than including every TSK entry; the conversion here flattens that into
+  one deduplicated list per verse (round-robin across phrase groups,
+  capped at 6) to match this app's simple chip-row UI, and collapses
+  verse ranges (e.g. "Prov 8:22-24") to their starting verse, since the
+  reference parser in `src/data/bible.ts` doesn't resolve ranges.
 - **Icons.** Every icon in `src/components/icons.tsx` is hand-drawn SVG
   path data written for this project — nothing to license or credit.
 - **App icon / splash.** Original artwork in the app's navy/gold
@@ -143,10 +157,6 @@ those consoles ask for. None of that is set up here.
   etc.) requires a commercial license/API agreement from its publisher
   (Biblica, Crossway, Tyndale, Thomas Nelson). The ASV (1901) is another
   public-domain option addable the same way KJV/WEB were.
-- **Cross-reference data** (`SAMPLE_CROSS_REFERENCES` in
-  `src/data/bible.ts`) is a curated sample of well-known pairings, not a
-  full dataset — swap in something like the public-domain Treasury of
-  Scripture Knowledge before shipping this feature as comprehensive.
 - **The `/legal` page's contact line** is a placeholder — fill in a real
   contact method before publishing it.
 

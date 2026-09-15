@@ -7,10 +7,11 @@ import { fontFamily, textStyles } from "@/theme/typography";
 import { SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, PlusIcon } from "@/components/icons";
 import {
   AVAILABLE_TRANSLATIONS,
+  ensureCrossReferencesLoaded,
+  getCrossReferences,
   getVerse,
   getVerseCandidates,
   searchKeyword,
-  SAMPLE_CROSS_REFERENCES,
   setActiveTranslation,
   TRANSLATION,
   useActiveTranslation,
@@ -85,13 +86,18 @@ export default function BibleScreen() {
     };
   }, [query]);
 
+  const [crossRefsReady, setCrossRefsReady] = useState(false);
+  useEffect(() => {
+    ensureCrossReferencesLoaded().then(() => setCrossRefsReady(true));
+  }, []);
+
   const crossRefs = useMemo(() => {
-    const refs = SAMPLE_CROSS_REFERENCES[selected.reference] ?? [];
+    const refs = getCrossReferences(selected.reference);
     return refs
       .map((ref) => getVerseCandidates(ref, 1)[0])
       .filter((v): v is VerseResult => Boolean(v));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected.reference, translationCode]);
+  }, [selected.reference, translationCode, crossRefsReady]);
 
   function choose(v: VerseResult) {
     setSelected(v);

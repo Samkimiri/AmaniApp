@@ -302,26 +302,41 @@ export function searchKeyword(query: string, limit = 30): VerseResult[] {
 }
 
 /**
- * A small, hand-picked set of cross references for well-known verses —
- * illustrative "related verses" data, not a generated dataset. Swap for
- * a full cross-reference dataset (e.g. the public-domain Treasury of
- * Scripture Knowledge) before shipping this feature for real.
+ * Cross-references for ~29,000 verses (93% of the Bible), derived from
+ * the Treasury of Scripture Knowledge via the public dataset at
+ * github.com/CrossReferences-org/bible-cross-references (CC BY 4.0 —
+ * credited in Profile and /legal). That dataset anchors references to
+ * specific phrases within a verse and deliberately curates rather than
+ * dumping every TSK entry; this converts it into one flat, deduplicated
+ * list per verse (round-robin across phrase groups, capped at 6) to
+ * match this app's simple "related verses" chip row, and collapses
+ * verse ranges (e.g. "Prov 8:22-24") to their starting verse, since the
+ * reference parser above doesn't resolve ranges.
+ *
+ * Loaded lazily as a binary asset, same as the WEB translation and for
+ * the same reason — it's multiple MB, and this app already crashed
+ * Android's Hermes compiler once from inlining too much bundled data as
+ * JS. `getCrossReferences` returns [] until the load finishes (normally
+ * under a second); call `ensureCrossReferencesLoaded` once and re-render
+ * on completion, as the Bible tab does.
  */
-export const SAMPLE_CROSS_REFERENCES: Record<string, string[]> = {
-  "John 3:16": ["1 John 4:9", "Romans 5:8", "John 1:14"],
-  "2 Corinthians 5:7": ["Hebrews 11:1", "Romans 8:24", "2 Corinthians 4:18"],
-  "Romans 8:28": ["Genesis 50:20", "Jeremiah 29:11", "Philippians 1:6"],
-  "Philippians 4:13": ["2 Corinthians 12:9", "Isaiah 41:10", "Ephesians 3:16"],
-  "Jeremiah 29:11": ["Romans 8:28", "Proverbs 3:5-6", "Isaiah 55:8-9"],
-  "Psalms 23:1": ["John 10:11", "Psalms 100:3", "Isaiah 40:11"],
-  "Isaiah 40:31": ["Psalms 27:14", "Galatians 6:9", "2 Corinthians 4:16"],
-  "Proverbs 3:5": ["Psalms 37:5", "Isaiah 26:3-4", "Jeremiah 17:7"],
-  "Matthew 6:33": ["Psalms 37:4", "Luke 12:31", "Philippians 4:19"],
-  "Romans 12:2": ["Ephesians 4:23", "2 Corinthians 5:17", "Colossians 3:2"],
-  "1 Corinthians 13:4": ["Colossians 3:14", "1 Peter 4:8", "John 13:34-35"],
-  "Joshua 1:9": ["Deuteronomy 31:6", "Isaiah 41:10", "Psalms 27:1"],
-  "Galatians 5:22": ["Ephesians 5:9", "Colossians 3:12-14", "2 Peter 1:5-7"],
-  "Ephesians 2:8": ["Romans 3:23-24", "Titus 3:5", "2 Timothy 1:9"],
-  "Hebrews 11:1": ["2 Corinthians 5:7", "Romans 8:24-25", "1 Peter 1:8"],
-  "Psalms 46:1": ["Isaiah 41:10", "Deuteronomy 31:6", "Nahum 1:7"],
-};
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const crossRefAssetModule = require("./bundled/cross-references.bibledata");
+let crossRefCache: Record<string, string[]> | null = null;
+
+export async function ensureCrossReferencesLoaded(): Promise<void> {
+  if (crossRefCache) return;
+  const asset = Asset.fromModule(crossRefAssetModule);
+  let text: string;
+  if (Platform.OS === "web") {
+    text = await fetch(asset.uri).then((r) => r.text());
+  } else {
+    await asset.downloadAsync();
+    text = await FileSystem.readAsStringAsync(asset.localUri ?? asset.uri);
+  }
+  crossRefCache = JSON.parse(text) as Record<string, string[]>;
+}
+
+export function getCrossReferences(reference: string): string[] {
+  return crossRefCache?.[reference] ?? [];
+}

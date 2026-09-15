@@ -74,9 +74,10 @@ export default function LegalScreen() {
 
         <Text style={styles.h2}>The Bible text</Text>
         <Text style={styles.p}>
-          The scripture bundled in Amani is the King James Version, first published in 1611 and in
-          the public domain worldwide. It ships inside the app itself and is never fetched from a
-          server.
+          Amani bundles two public-domain translations — the King James Version (1611) and the
+          World English Bible — inside the app itself; neither is ever fetched from a server. The
+          cross-references shown alongside a verse are adapted from the Treasury of Scripture
+          Knowledge via the CrossReferences.org dataset, used under CC BY 4.0.
         </Text>
 
         <Text style={styles.h1}>Terms of use</Text>
