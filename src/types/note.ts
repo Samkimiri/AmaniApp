@@ -1,3 +1,5 @@
+import { getHighlightColor } from "@/theme/highlightColors";
+
 export type NoteBlockType = "text" | "heading" | "verse" | "image" | "audio";
 
 export interface TextBlock {
@@ -19,6 +21,9 @@ export interface VerseBlock {
   type: "verse";
   reference: string; // e.g. "2 Corinthians 5:7"
   text: string;
+  /** Highlight color id for this callout's background (see
+   * src/theme/highlightColors.ts) — undefined means the default (gold). */
+  color?: string;
 }
 
 export interface ImageBlock {
@@ -115,11 +120,12 @@ export function noteToHtml(note: SermonNote): string {
         )}</h2>`;
       }
       if (block.type === "verse") {
-        return `<blockquote style="background:#FBF1DE;border-left:3px solid #B8860B;margin:16px 0;padding:12px 16px;border-radius:8px;">
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#8A5A00;">${escapeHtml(
+        const c = getHighlightColor(block.color);
+        return `<blockquote style="background:${c.background};border-left:3px solid ${c.accent};margin:16px 0;padding:12px 16px;border-radius:8px;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:${c.accent};">${escapeHtml(
             block.reference
           )}</div>
-          <div style="font-style:italic;font-size:15px;color:#4A3B12;margin-top:4px;">&ldquo;${escapeHtml(
+          <div style="font-style:italic;font-size:15px;color:${c.text};margin-top:4px;">&ldquo;${escapeHtml(
             block.text
           )}&rdquo;</div>
         </blockquote>`;

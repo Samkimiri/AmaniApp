@@ -34,6 +34,7 @@ import {
   UndoIcon,
 } from "@/components/icons";
 import { VerseCallout } from "@/components/VerseCallout";
+import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ShareSheet } from "@/components/ShareSheet";
 import { getVerseCandidates, useActiveTranslation, VerseResult } from "@/data/bible";
@@ -80,6 +81,7 @@ export default function NoteEditorScreen() {
   const [verseQuery, setVerseQuery] = useState("");
   const [tagBarOpen, setTagBarOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const [shareOpen, setShareOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
@@ -297,6 +299,13 @@ export default function NoteEditorScreen() {
     setNote((n) => ({
       ...n,
       blocks: n.blocks.map((b) => (b.id === blockId && b.type === "heading" ? { ...b, text } : b)),
+    }));
+  }
+
+  function updateVerseColor(blockId: string, color: string) {
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) => (b.id === blockId && b.type === "verse" ? { ...b, color } : b)),
     }));
   }
 
@@ -644,7 +653,26 @@ export default function NoteEditorScreen() {
               );
             }
             if (block.type === "verse") {
-              return <VerseCallout key={block.id} reference={block.reference} text={block.text} />;
+              const pickerOpen = colorPickerFor === block.id;
+              return (
+                <View key={block.id}>
+                  <Pressable
+                    onPress={() => setColorPickerFor(pickerOpen ? null : block.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Change this verse's background color"
+                  >
+                    <VerseCallout reference={block.reference} text={block.text} color={block.color} />
+                  </Pressable>
+                  {pickerOpen ? (
+                    <View style={styles.colorPickerRow}>
+                      <ColorSwatchRow
+                        selected={block.color ?? "gold"}
+                        onSelect={(color) => updateVerseColor(block.id, color)}
+                      />
+                    </View>
+                  ) : null}
+                </View>
+              );
             }
             if (block.type === "audio") {
               return (
@@ -911,6 +939,7 @@ const styles = StyleSheet.create({
     padding: 0,
     marginTop: 6,
   },
+  colorPickerRow: { marginTop: 8, paddingHorizontal: 2 },
   imageBlock: { borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   image: { width: "100%", height: 180, backgroundColor: "#EFE7D8" },
   imageCaption: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },

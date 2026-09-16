@@ -20,6 +20,8 @@ import {
 import { notesStore } from "@/data/notesStore";
 import { bookmarks, highlights, VerseMark } from "@/data/verseMarks";
 import { newId, SermonNote } from "@/types/note";
+import { ColorSwatchRow } from "@/components/ColorSwatchRow";
+import { getHighlightColor } from "@/theme/highlightColors";
 
 const DEFAULT_VERSE: VerseResult = {
   book: "John",
@@ -35,6 +37,7 @@ export default function BibleScreen() {
   const [selected, setSelected] = useState<VerseResult>(DEFAULT_VERSE);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);
+  const [highlightColor, setHighlightColor] = useState<string | undefined>(undefined);
   const [savedBookmarks, setSavedBookmarks] = useState<VerseMark[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const translationCode = useActiveTranslation();
@@ -64,7 +67,10 @@ export default function BibleScreen() {
 
   useEffect(() => {
     bookmarks.isMarked(selected.reference).then(setIsBookmarked);
-    highlights.isMarked(selected.reference).then(setIsHighlighted);
+    highlights.get(selected.reference).then((mark) => {
+      setIsHighlighted(!!mark);
+      setHighlightColor(mark?.color);
+    });
   }, [selected.reference]);
 
   useEffect(() => {
@@ -111,8 +117,14 @@ export default function BibleScreen() {
   }
 
   async function toggleHighlight() {
-    const nowHighlighted = await highlights.toggle(selected);
+    const nowHighlighted = await highlights.toggle(selected, highlightColor);
     setIsHighlighted(nowHighlighted);
+    if (!nowHighlighted) setHighlightColor(undefined);
+  }
+
+  async function chooseHighlightColor(color: string) {
+    setHighlightColor(color);
+    if (isHighlighted) await highlights.setColor(selected.reference, color);
   }
 
   async function addSelectedVerseToNewNote() {
@@ -181,9 +193,23 @@ export default function BibleScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.reference}>{selected.reference}</Text>
-          <View style={[styles.verseTextWrap, isHighlighted && styles.verseTextWrapHighlighted]}>
+          <View
+            style={[
+              styles.verseTextWrap,
+              isHighlighted && [
+                styles.verseTextWrapHighlighted,
+                { backgroundColor: getHighlightColor(highlightColor).background },
+              ],
+            ]}
+          >
             <Text style={textStyles.verseTextLarge}>&ldquo;{selected.text}&rdquo;</Text>
           </View>
+
+          {isHighlighted ? (
+            <View style={styles.colorPickerRow}>
+              <ColorSwatchRow selected={highlightColor ?? "gold"} onSelect={chooseHighlightColor} />
+            </View>
+          ) : null}
 
           <View style={styles.actionsRow}>
             <Pressable
@@ -208,7 +234,7 @@ export default function BibleScreen() {
               accessibilityRole="button"
               accessibilityLabel={isHighlighted ? "Remove highlight" : "Highlight this verse"}
             >
-              <HighlightIcon size={17} color={isHighlighted ? colors.gold : colors.textSecondary} />
+              <HighlightIcon size={17} color={isHighlighted ? getHighlightColor(highlightColor).accent : colors.textSecondary} />
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
@@ -317,6 +343,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginHorizontal: -12,
   },
+  colorPickerRow: { marginTop: 10 },
   actionsRow: { flexDirection: "row", gap: 10, marginTop: 20 },
   actionButton: {
     width: 44,
