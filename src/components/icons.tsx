@@ -222,6 +222,17 @@ export function CloseIcon({ size = 18, color = "#5B6472", strokeWidth = 2 }: Ico
   );
 }
 
+export function HeadingIcon({ size, color = "#5B6472", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Line x1={5} y1={5} x2={5} y2={19} />
+      <Line x1={13} y1={5} x2={13} y2={19} />
+      <Line x1={5} y1={12} x2={13} y2={12} />
+      <Path d="M17 9.8c0-1.1.9-2 2-2s2 .8 2 1.8c0 1.4-1.3 2.2-4 4.9h4" />
+    </Svg>
+  );
+}
+
 export function TrashIcon({ size = 18, color = "#5B6472", strokeWidth = 1.8 }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>

@@ -1,8 +1,16 @@
-export type NoteBlockType = "text" | "verse" | "image" | "audio";
+export type NoteBlockType = "text" | "heading" | "verse" | "image" | "audio";
 
 export interface TextBlock {
   id: string;
   type: "text";
+  text: string;
+}
+
+/** A subheading within the note body — e.g. to break a long sermon note
+ * into sections ("Introduction", "Point 1", "Application"). */
+export interface HeadingBlock {
+  id: string;
+  type: "heading";
   text: string;
 }
 
@@ -27,7 +35,7 @@ export interface AudioBlock {
   durationMillis: number;
 }
 
-export type NoteBlock = TextBlock | VerseBlock | ImageBlock | AudioBlock;
+export type NoteBlock = TextBlock | HeadingBlock | VerseBlock | ImageBlock | AudioBlock;
 
 export function firstAudioBlock(note: SermonNote): AudioBlock | undefined {
   return note.blocks.find((b): b is AudioBlock => b.type === "audio");
@@ -73,6 +81,9 @@ export function noteToPlainText(note: SermonNote): string {
   for (const block of note.blocks) {
     if (block.type === "text" && block.text.trim()) {
       lines.push(block.text.trim());
+    } else if (block.type === "heading" && block.text.trim()) {
+      lines.push("");
+      lines.push(block.text.trim().toUpperCase());
     } else if (block.type === "verse") {
       lines.push(`"${block.text}" — ${block.reference}`);
     } else if (block.type === "image") {
@@ -97,6 +108,11 @@ export function noteToHtml(note: SermonNote): string {
     .map((block) => {
       if (block.type === "text" && block.text.trim()) {
         return `<p style="font-size:15px;line-height:1.7;color:#333B45;">${escapeHtml(block.text)}</p>`;
+      }
+      if (block.type === "heading" && block.text.trim()) {
+        return `<h2 style="font-size:17px;font-weight:800;color:#182233;margin:22px 0 6px;">${escapeHtml(
+          block.text
+        )}</h2>`;
       }
       if (block.type === "verse") {
         return `<blockquote style="background:#FBF1DE;border-left:3px solid #B8860B;margin:16px 0;padding:12px 16px;border-radius:8px;">

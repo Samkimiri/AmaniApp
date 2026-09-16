@@ -83,7 +83,7 @@ export default function ProfileScreen() {
         </Pressable>
 
         <Text style={styles.footnote}>
-          Amani &middot; v1.0.0{"\n"}
+          Amani: Sermon Notes &middot; v1.0.0{"\n"}
           Scripture text: {TRANSLATION.name}, public domain.{"\n"}
           Cross-references adapted from the Treasury of Scripture Knowledge via
           CrossReferences.org (CC BY 4.0).{"\n"}

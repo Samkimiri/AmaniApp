@@ -1,4 +1,4 @@
-# Amani — sermon notes + offline Bible
+# Amani: Sermon Notes
 
 A mobile-and-web app for taking sermon notes and reading Scripture, built
 with Expo (React Native) + TypeScript. No account, no server — every

@@ -20,6 +20,7 @@ import { fontFamily } from "@/theme/typography";
 import {
   CameraIcon,
   ChevronLeftIcon,
+  HeadingIcon,
   ImagePlaceholderIcon,
   MicIcon,
   OpenBookIcon,
@@ -168,6 +169,17 @@ export default function NoteEditorScreen() {
     appendBlock({ id: newId(), type: "verse", reference: v.reference, text: v.text });
     setVerseQuery("");
     setVerseBarOpen(false);
+  }
+
+  function addHeading() {
+    appendBlock({ id: newId(), type: "heading", text: "" });
+  }
+
+  function updateHeadingBlock(blockId: string, text: string) {
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) => (b.id === blockId && b.type === "heading" ? { ...b, text } : b)),
+    }));
   }
 
   function addTag() {
@@ -492,6 +504,20 @@ export default function NoteEditorScreen() {
                 />
               );
             }
+            if (block.type === "heading") {
+              return (
+                <TextInput
+                  key={block.id}
+                  value={block.text}
+                  onChangeText={(text) => updateHeadingBlock(block.id, text)}
+                  onFocus={handleTypingFocus}
+                  onBlur={handleTypingBlur}
+                  placeholder="Subheading"
+                  placeholderTextColor={colors.textFaint}
+                  style={styles.headingInput}
+                />
+              );
+            }
             if (block.type === "verse") {
               return <VerseCallout key={block.id} reference={block.reference} text={block.text} />;
             }
@@ -616,6 +642,14 @@ export default function NoteEditorScreen() {
               <CameraIcon size={18} />
             </Pressable>
             <Pressable
+              style={styles.toolbarButton}
+              onPress={addHeading}
+              accessibilityRole="button"
+              accessibilityLabel="Add a subheading"
+            >
+              <HeadingIcon size={18} />
+            </Pressable>
+            <Pressable
               style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
               onPress={() => setVerseBarOpen((v) => !v)}
               accessibilityRole="button"
@@ -718,6 +752,15 @@ const styles = StyleSheet.create({
   tagChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.verseText },
   tagChipRemove: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.verseText, opacity: 0.6 },
   bodyInput: { fontFamily: fontFamily.sansRegular, fontSize: 15, lineHeight: 26, color: colors.textSecondary, padding: 0 },
+  headingInput: {
+    fontFamily: fontFamily.sansExtraBold,
+    fontSize: 15.5,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+    color: colors.navy,
+    padding: 0,
+    marginTop: 6,
+  },
   imageBlock: { borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   image: { width: "100%", height: 180, backgroundColor: "#EFE7D8" },
   imageCaption: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },

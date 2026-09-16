@@ -34,11 +34,7 @@ export function NoteCard({
       <Text style={styles.title} numberOfLines={1}>
         {note.title || "Untitled note"}
       </Text>
-      {preview ? (
-        <Text style={styles.preview} numberOfLines={2}>
-          {preview}
-        </Text>
-      ) : null}
+      {preview ? <Text style={styles.preview}>{preview}</Text> : null}
       {verse || audio || (note.tags && note.tags.length > 0) ? (
         <View style={styles.pillRow}>
           {verse ? (

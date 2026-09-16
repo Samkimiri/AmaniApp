@@ -19,7 +19,7 @@ function noteSearchText(note: SermonNote): string {
     note.date,
     ...(note.tags ?? []),
     ...note.blocks.map((b) => {
-      if (b.type === "text") return b.text;
+      if (b.type === "text" || b.type === "heading") return b.text;
       if (b.type === "verse") return `${b.reference} ${b.text}`;
       return "";
     }),

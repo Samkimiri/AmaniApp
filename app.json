@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Amani",
+    "name": "Amani: Sermon Notes",
     "slug": "amani-app",
     "scheme": "amani",
     "version": "1.0.0",
@@ -30,7 +30,7 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "name": "Amani",
+      "name": "Amani: Sermon Notes",
       "shortName": "Amani",
       "themeColor": "#1F3A5F",
       "backgroundColor": "#1F3A5F",
