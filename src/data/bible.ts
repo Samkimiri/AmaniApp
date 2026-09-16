@@ -1,5 +1,5 @@
 /**
- * Offline scripture engine, with two bundled public-domain translations.
+ * Offline scripture engine, with five bundled public-domain translations.
  *
  * - **KJV** (King James Version, 1611) — the original translation this
  *   app shipped with. Imported directly as a JS module so it's available
@@ -13,21 +13,34 @@
  *   translations footnote rather than silently drop; the bundled file
  *   stores an explanatory note directly in those verse slots instead of
  *   leaving them blank.
+ * - **ASV** (American Standard Version, 1901), **Darby** (The Darby
+ *   Translation, 1889/1890), and **YLT** (Young's Literal Translation,
+ *   1898) — all public domain (pre-1929 publications), converted from
+ *   the structured JSON at github.com/scrollmapper/bible_databases
+ *   (formats/json/{ASV,Darby,YLT}.json — MIT-licensed conversion
+ *   scripts over public-domain source texts). Like WEB, the ASV and
+ *   Darby source data leaves a handful of well-documented
+ *   manuscript-variant verses blank (verse number present, text empty)
+ *   rather than dropping the verse number entirely — those get the same
+ *   explanatory-note treatment as WEB's Acts 8:37. Darby's source JSON
+ *   also had one isolated, mechanical bug — a missing space before every
+ *   occurrence of the word "God" (an artifact of how its source
+ *   markup was stripped, e.g. "AndGod said") — fixed at conversion time.
  *
- * The WEB file is loaded lazily as a binary *asset* (via expo-asset)
- * rather than a second `import` — two ~4MB translations both inlined as
- * JS object literals crashes the Hermes bytecode compiler on Android
- * release builds (verified directly: one inlined translation builds
- * fine, two does not). Loading it as an asset keeps it out of the JS
- * bundle Hermes has to compile; it's fetched once, the first time
- * someone switches to it, and cached in memory after that. See
- * metro.config.js for the matching resolver config.
+ * Every translation past the first (WEB, ASV, Darby, YLT) is loaded
+ * lazily as a binary *asset* (via expo-asset) rather than a second
+ * `import` — two ~4MB translations both inlined as JS object literals
+ * crashes the Hermes bytecode compiler on Android release builds
+ * (verified directly: one inlined translation builds fine, two does
+ * not). Loading them as assets keeps them out of the JS bundle Hermes
+ * has to compile; each is fetched once, the first time someone switches
+ * to it, and cached in memory after that. See metro.config.js for the
+ * matching resolver config.
  *
- * Both still work with zero network connection once loaded — this is
- * about *bundle format*, not about needing a server. Adding a
+ * All of these still work with zero network connection once loaded —
+ * this is about *bundle format*, not about needing a server. Adding a
  * copyrighted modern translation (NIV, ESV, NLT, NKJV) instead requires
- * a commercial license from its publisher; the ASV (1901) is another
- * public-domain option addable the same way these two were.
+ * a commercial license from its publisher.
  */
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -46,15 +59,18 @@ interface BibleData {
   text: Record<string, ChapterMap>;
 }
 
-export type TranslationCode = "KJV" | "WEB";
+export type TranslationCode = "KJV" | "WEB" | "ASV" | "DARBY" | "YLT";
 
 const KJV: BibleData = kjvRaw as unknown as BibleData;
 
 // Known ahead of time so the picker UI can show translation names before
-// the (lazily-loaded) WEB data itself has ever been fetched.
+// the (lazily-loaded) translation data itself has ever been fetched.
 const TRANSLATION_META: Record<TranslationCode, { name: string; license: string }> = {
   KJV: { name: KJV.name, license: KJV.license },
   WEB: { name: "World English Bible", license: "Public domain" },
+  ASV: { name: "American Standard Version", license: "Public domain" },
+  DARBY: { name: "Darby Translation", license: "Public domain" },
+  YLT: { name: "Young's Literal Translation", license: "Public domain" },
 };
 
 export const AVAILABLE_TRANSLATIONS: { code: TranslationCode; name: string }[] = (
@@ -79,6 +95,60 @@ async function loadWebBible(): Promise<BibleData> {
   return webBibleCache;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const asvAssetModule = require("./bundled/asv.bibledata");
+let asvBibleCache: BibleData | null = null;
+
+async function loadAsvBible(): Promise<BibleData> {
+  if (asvBibleCache) return asvBibleCache;
+  const asset = Asset.fromModule(asvAssetModule);
+  let text: string;
+  if (Platform.OS === "web") {
+    text = await fetch(asset.uri).then((r) => r.text());
+  } else {
+    await asset.downloadAsync();
+    text = await FileSystem.readAsStringAsync(asset.localUri ?? asset.uri);
+  }
+  asvBibleCache = JSON.parse(text) as BibleData;
+  return asvBibleCache;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const darbyAssetModule = require("./bundled/darby.bibledata");
+let darbyBibleCache: BibleData | null = null;
+
+async function loadDarbyBible(): Promise<BibleData> {
+  if (darbyBibleCache) return darbyBibleCache;
+  const asset = Asset.fromModule(darbyAssetModule);
+  let text: string;
+  if (Platform.OS === "web") {
+    text = await fetch(asset.uri).then((r) => r.text());
+  } else {
+    await asset.downloadAsync();
+    text = await FileSystem.readAsStringAsync(asset.localUri ?? asset.uri);
+  }
+  darbyBibleCache = JSON.parse(text) as BibleData;
+  return darbyBibleCache;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const yltAssetModule = require("./bundled/ylt.bibledata");
+let yltBibleCache: BibleData | null = null;
+
+async function loadYltBible(): Promise<BibleData> {
+  if (yltBibleCache) return yltBibleCache;
+  const asset = Asset.fromModule(yltAssetModule);
+  let text: string;
+  if (Platform.OS === "web") {
+    text = await fetch(asset.uri).then((r) => r.text());
+  } else {
+    await asset.downloadAsync();
+    text = await FileSystem.readAsStringAsync(asset.localUri ?? asset.uri);
+  }
+  yltBibleCache = JSON.parse(text) as BibleData;
+  return yltBibleCache;
+}
+
 const STORAGE_KEY = "amani.translation.v1";
 let activeCode: TranslationCode = "KJV";
 let bible: BibleData = KJV;
@@ -89,7 +159,18 @@ export function getActiveTranslationCode(): TranslationCode {
 }
 
 async function resolveTranslationData(code: TranslationCode): Promise<BibleData> {
-  return code === "KJV" ? KJV : loadWebBible();
+  switch (code) {
+    case "KJV":
+      return KJV;
+    case "WEB":
+      return loadWebBible();
+    case "ASV":
+      return loadAsvBible();
+    case "DARBY":
+      return loadDarbyBible();
+    case "YLT":
+      return loadYltBible();
+  }
 }
 
 export async function setActiveTranslation(code: TranslationCode): Promise<void> {

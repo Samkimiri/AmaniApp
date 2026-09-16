@@ -108,7 +108,7 @@ those consoles ask for. None of that is set up here.
 - **Fonts — Newsreader & Plus Jakarta Sans.** Google Fonts, SIL Open
   Font License: free to use, bundle, and modify commercially, no
   royalties, no attribution requirement.
-- **Bible text.** Both bundled translations are public domain:
+- **Bible text.** All five bundled translations are public domain:
   - **KJV** (King James Version, 1611) — `src/data/bundled/kjv.json`,
     assembled from a public-domain KJV text repackaged as JSON.
   - **WEB** (World English Bible) — `src/data/bundled/web.bibledata`,
@@ -120,12 +120,31 @@ those consoles ask for. None of that is set up here.
     translations typically footnote rather than include — the bundled
     file notes this directly in those verse slots rather than leaving
     them blank.
+  - **ASV** (American Standard Version, 1901), **Darby** (The Darby
+    Translation, 1889/1890), and **YLT** (Young's Literal Translation,
+    1898) — `src/data/bundled/{asv,darby,ylt}.bibledata`, all public
+    domain (pre-1929 publications; see e.g.
+    [ebible.org's ASV copyright page](https://ebible.org/eng-asv/copyright.htm)).
+    Converted from the structured JSON at
+    [github.com/scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases)
+    (`formats/json/{ASV,Darby,YLT}.json`) — that repo's own conversion
+    code is MIT-licensed, layered over public-domain source texts, so no
+    extra attribution is required for the text itself. As with WEB, a
+    handful of well-documented manuscript-variant verses in the ASV (16
+    verses, e.g. Acts 8:37) and Darby (3 verses) source data are blank
+    (verse number present, text omitted); the bundled files note this
+    directly in those verse slots instead of leaving them blank. Darby's
+    source JSON also had one isolated, mechanical bug — every occurrence
+    of the word "God" was missing its preceding space (e.g. "AndGod
+    said"), an artifact of how the source markup was stripped — fixed at
+    conversion time.
 
-  `web.bibledata` is plain JSON despite its unusual extension — see the
-  comment in `metro.config.js` for why (two ~4MB translations both
-  inlined as JS crashes the Hermes bytecode compiler on Android; this
-  one loads lazily as a binary asset instead, the first time someone
-  switches to it).
+  `web.bibledata`, `asv.bibledata`, `darby.bibledata`, and `ylt.bibledata`
+  are all plain JSON despite the unusual extension — see the comment in
+  `metro.config.js` for why (two ~4MB translations both inlined as JS
+  crashes the Hermes bytecode compiler on Android; every translation
+  past KJV loads lazily as a binary asset instead, the first time
+  someone switches to it).
 - **Cross-references** — `src/data/bundled/cross-references.bibledata`
   (also a lazy asset, same reason as above), covering ~29,000 verses.
   Converted from the Treasury of Scripture Knowledge (public domain) via

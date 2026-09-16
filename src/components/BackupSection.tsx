@@ -40,10 +40,13 @@ export function BackupSection() {
       setBusy("import");
       const json = await pickBackupJson();
       if (!json) return; // user canceled
-      const { imported } = await importBackup(json);
+      const { imported, failed } = await importBackup(json);
       showAlert({
-        title: "Backup restored",
-        message: `Restored ${imported} note${imported === 1 ? "" : "s"} onto this device.`,
+        title: failed > 0 ? "Backup partially restored" : "Backup restored",
+        message:
+          failed > 0
+            ? `Restored ${imported} note${imported === 1 ? "" : "s"}, but ${failed} ${failed === 1 ? "was" : "were"} too damaged to read and ${failed === 1 ? "was" : "were"} skipped.`
+            : `Restored ${imported} note${imported === 1 ? "" : "s"} onto this device.`,
       });
     } catch (err) {
       showAlert({ title: "Couldn't restore that backup", message: String(err) });

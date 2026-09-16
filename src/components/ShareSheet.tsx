@@ -245,6 +245,8 @@ function Row({
       onPress={onPress}
       disabled={busy}
       style={[styles.row, !last && styles.rowBorder, busy && { opacity: 0.5 }]}
+      accessibilityRole="button"
+      accessibilityLabel={title}
     >
       <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>{icon}</View>
       <View style={{ flex: 1 }}>

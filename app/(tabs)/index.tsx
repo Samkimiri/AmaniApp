@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/theme/colors";
 import { fontFamily, textStyles } from "@/theme/typography";
-import { OpenBookIcon, PlusIcon, ChevronRightIcon, UserIcon } from "@/components/icons";
+import { OpenBookIcon, PlusIcon, NotesIcon, UserIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { NoteCard } from "@/components/NoteCard";
 import { VerseOfTheDayCard } from "@/components/VerseOfTheDayCard";
@@ -92,7 +92,7 @@ export default function HomeScreen() {
             style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
             onPress={() => router.push("/notes")}
           >
-            <ChevronRightIcon size={20} color={colors.navy} />
+            <NotesIcon size={20} color={colors.navy} />
             <Text style={styles.tileTitle}>All notes</Text>
             <Text style={styles.tileSubtitle}>{notes.length} saved</Text>
           </Pressable>

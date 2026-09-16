@@ -7,13 +7,19 @@ import { fontFamily, textStyles } from "@/theme/typography";
 import { ChevronRightIcon, DocumentIcon, OpenBookIcon, UserIcon } from "@/components/icons";
 import { AppLockSection } from "@/components/AppLockSection";
 import { BackupSection } from "@/components/BackupSection";
-import { AVAILABLE_TRANSLATIONS, setActiveTranslation, TRANSLATION, useActiveTranslation } from "@/data/bible";
+import {
+  AVAILABLE_TRANSLATIONS,
+  setActiveTranslation,
+  TRANSLATION,
+  TranslationCode,
+  useActiveTranslation,
+} from "@/data/bible";
 
 export default function ProfileScreen() {
   const translationCode = useActiveTranslation(); // subscribes so this screen re-renders when the Bible tab switches translations
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
 
-  async function chooseTranslation(code: "KJV" | "WEB") {
+  async function chooseTranslation(code: TranslationCode) {
     if (code === translationCode) return;
     setSwitchingTo(code);
     await setActiveTranslation(code);

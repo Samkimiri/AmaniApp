@@ -112,8 +112,12 @@ function isBackupFile(value: unknown): value is BackupFile {
  * Notes are saved by id, so restoring the same backup twice (or onto a
  * device that already has some of those notes) overwrites rather than
  * duplicates; anything else already on the device is left untouched.
+ *
+ * Each note is processed independently — one malformed note (a hand-edited
+ * file, a partially-corrupted export) shouldn't abort the whole restore
+ * and leave the user unsure whether anything before it actually saved.
  */
-export async function importBackup(jsonText: string): Promise<{ imported: number }> {
+export async function importBackup(jsonText: string): Promise<{ imported: number; failed: number }> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(jsonText);
@@ -125,20 +129,25 @@ export async function importBackup(jsonText: string): Promise<{ imported: number
   }
 
   let imported = 0;
+  let failed = 0;
   for (const note of parsed.notes) {
-    const blocks = await Promise.all(
-      note.blocks.map(async (block) => {
-        if (block.type !== "audio" || !block.uri.startsWith("data:")) return block;
-        try {
-          const persistedUri = await persistRecording(block.uri, block.id);
-          return { ...block, uri: persistedUri };
-        } catch {
-          return block;
-        }
-      })
-    );
-    await notesStore.save({ ...note, blocks });
-    imported++;
+    try {
+      const blocks = await Promise.all(
+        (note.blocks ?? []).map(async (block) => {
+          if (block.type !== "audio" || !block.uri.startsWith("data:")) return block;
+          try {
+            const persistedUri = await persistRecording(block.uri, block.id);
+            return { ...block, uri: persistedUri };
+          } catch {
+            return block;
+          }
+        })
+      );
+      await notesStore.save({ ...note, blocks });
+      imported++;
+    } catch {
+      failed++;
+    }
   }
-  return { imported };
+  return { imported, failed };
 }

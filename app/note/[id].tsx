@@ -29,7 +29,7 @@ import {
 import { VerseCallout } from "@/components/VerseCallout";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ShareSheet } from "@/components/ShareSheet";
-import { getVerseCandidates, VerseResult } from "@/data/bible";
+import { getVerseCandidates, useActiveTranslation, VerseResult } from "@/data/bible";
 import { notesStore } from "@/data/notesStore";
 import { persistRecording, resolvePlayableUri, resolvePlayableUriAsDataUrl } from "@/data/audioStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
@@ -61,6 +61,7 @@ function emptyNote(id: string): SermonNote {
 export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === "new";
+  const translationCode = useActiveTranslation();
   const [note, setNote] = useState<SermonNote>(() => emptyNote(isNew ? newId() : id));
   const [loaded, setLoaded] = useState(isNew);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
@@ -77,12 +78,20 @@ export default function NoteEditorScreen() {
   const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const playingObjectUrlRef = useRef<string | null>(null);
+  // Mirrors `recording` state for the unmount-cleanup effect below, which
+  // (correctly) has an empty dependency array so it only runs once and
+  // only ever sees a ref's *current* value, not a captured one — reading
+  // the `recording` state variable there instead would always see it as
+  // `null` (its value on first render), silently failing to stop the mic
+  // if the screen unmounts mid-recording via some path other than the
+  // Back button (which now stops it explicitly — see goBack below).
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   useEffect(() => {
     return () => {
       soundRef.current?.unloadAsync();
       if (playingObjectUrlRef.current) URL.revokeObjectURL(playingObjectUrlRef.current);
-      recording?.stopAndUnloadAsync().catch(() => {});
+      recordingRef.current?.stopAndUnloadAsync().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -118,7 +127,7 @@ export default function NoteEditorScreen() {
 
   const verseSuggestions = useMemo<VerseResult[]>(
     () => (verseQuery.trim() ? getVerseCandidates(verseQuery, 4) : []),
-    [verseQuery]
+    [verseQuery, translationCode]
   );
 
   function updateTextBlock(blockId: string, text: string) {
@@ -198,29 +207,40 @@ export default function NoteEditorScreen() {
     }
   }
 
+  /** Stops an in-progress recording and turns it into an audio block, if
+   * it captured anything. Doesn't touch `note`/`setNote` itself — callers
+   * decide how to fold the result in, since `goBack` needs the block
+   * immediately (not after an async setState round-trip) to correctly
+   * save the note it belongs to before navigating away. */
+  async function stopRecordingAndGetBlock(activeRecording: Audio.Recording): Promise<NoteBlock | null> {
+    try {
+      await activeRecording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const status = await activeRecording.getStatusAsync();
+      const uri = activeRecording.getURI();
+      if (!uri) return null;
+      const blockId = newId();
+      const persistedUri = await persistRecording(uri, blockId);
+      return {
+        id: blockId,
+        type: "audio",
+        uri: persistedUri,
+        durationMillis: status.durationMillis ?? recordingDuration,
+      };
+    } catch (err) {
+      showAlert({ title: "Couldn't save the recording", message: String(err) });
+      return null;
+    } finally {
+      setRecording(null);
+      recordingRef.current = null;
+      setRecordingDuration(0);
+    }
+  }
+
   async function toggleRecording() {
     if (recording) {
-      try {
-        await recording.stopAndUnloadAsync();
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-        const status = await recording.getStatusAsync();
-        const uri = recording.getURI();
-        if (uri) {
-          const blockId = newId();
-          const persistedUri = await persistRecording(uri, blockId);
-          appendBlock({
-            id: blockId,
-            type: "audio",
-            uri: persistedUri,
-            durationMillis: status.durationMillis ?? recordingDuration,
-          });
-        }
-      } catch (err) {
-        showAlert({ title: "Couldn't save the recording", message: String(err) });
-      } finally {
-        setRecording(null);
-        setRecordingDuration(0);
-      }
+      const block = await stopRecordingAndGetBlock(recording);
+      if (block) appendBlock(block);
       return;
     }
 
@@ -237,6 +257,7 @@ export default function NoteEditorScreen() {
         200
       );
       setRecording(rec);
+      recordingRef.current = rec;
       setRecordingDuration(0);
     } catch (err) {
       showAlert({ title: "Couldn't start recording", message: String(err) });
@@ -293,12 +314,29 @@ export default function NoteEditorScreen() {
   }
 
   async function goBack() {
-    if (isBlankNote(note)) {
+    // Leaving mid-recording used to just abandon it — the mic/recorder
+    // session was never stopped at all, leaking the resource (and on web,
+    // leaving the browser's "microphone in use" indicator on) with no UI
+    // left to stop it. Stop and keep the recording, same as tapping the
+    // mic button would, before doing anything else.
+    let finalNote = note;
+    if (recordingRef.current) {
+      const block = await stopRecordingAndGetBlock(recordingRef.current);
+      if (block) {
+        finalNote = {
+          ...finalNote,
+          blocks: [...finalNote.blocks, block, { id: newId(), type: "text", text: "" }],
+        };
+        setNote(finalNote);
+      }
+    }
+
+    if (isBlankNote(finalNote)) {
       // Covers both "never saved" and "typed something, then deleted it
       // all again" — either way there's nothing worth keeping.
-      await notesStore.remove(note.id);
+      await notesStore.remove(finalNote.id);
     } else {
-      await notesStore.save({ ...note, updatedAt: new Date().toISOString() });
+      await notesStore.save({ ...finalNote, updatedAt: new Date().toISOString() });
     }
     router.back();
   }
@@ -360,7 +398,13 @@ export default function NoteEditorScreen() {
           {note.tags && note.tags.length > 0 ? (
             <View style={styles.tagChipRow}>
               {note.tags.map((tag) => (
-                <Pressable key={tag} style={styles.tagChip} onPress={() => removeTag(tag)}>
+                <Pressable
+                  key={tag}
+                  style={styles.tagChip}
+                  onPress={() => removeTag(tag)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove tag ${tag}`}
+                >
                   <Text style={styles.tagChipText}>{tag}</Text>
                   <Text style={styles.tagChipRemove}>×</Text>
                 </Pressable>
@@ -454,7 +498,13 @@ export default function NoteEditorScreen() {
             {note.tags && note.tags.length > 0 ? (
               <View style={styles.tagChipRow}>
                 {note.tags.map((tag) => (
-                  <Pressable key={tag} style={styles.tagChip} onPress={() => removeTag(tag)}>
+                  <Pressable
+                    key={tag}
+                    style={styles.tagChip}
+                    onPress={() => removeTag(tag)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove tag ${tag}`}
+                  >
                     <Text style={styles.tagChipText}>{tag}</Text>
                     <Text style={styles.tagChipRemove}>×</Text>
                   </Pressable>

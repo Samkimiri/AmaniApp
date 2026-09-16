@@ -101,6 +101,8 @@ export default function NotesScreen() {
             <Pressable
               style={[styles.tagChip, activeTag === tag && styles.tagChipActive]}
               onPress={() => setActiveTag((current) => (current === tag ? null : tag))}
+              accessibilityRole="button"
+              accessibilityLabel={activeTag === tag ? `Clear tag filter #${tag}` : `Filter by tag #${tag}`}
             >
               <Text style={[styles.tagChipText, activeTag === tag && styles.tagChipTextActive]}>#{tag}</Text>
             </Pressable>

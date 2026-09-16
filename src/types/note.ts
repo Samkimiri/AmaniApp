@@ -109,7 +109,16 @@ export function noteToHtml(note: SermonNote): string {
         </blockquote>`;
       }
       if (block.type === "image") {
-        return `<img src="${block.uri}" style="width:100%;border-radius:8px;margin:12px 0;" />`;
+        // Escaped like every other field here — normally a data: URI or a
+        // local file path (neither ever legitimately contains `"` or `<`),
+        // but a note can also arrive via Backup → Restore, which parses
+        // arbitrary JSON from a user-picked file with no content
+        // validation beyond its top-level shape. Without this, a crafted
+        // `uri` in an imported backup could break out of the attribute
+        // and inject a script that runs in this same origin when the
+        // note is later shared as a PDF (web's print-to-PDF path renders
+        // this HTML in a same-origin tab).
+        return `<img src="${escapeHtml(block.uri)}" style="width:100%;border-radius:8px;margin:12px 0;" />`;
       }
       if (block.type === "audio") {
         return `<div style="margin:12px 0;padding:10px 14px;border:1px solid #ECE4D4;border-radius:8px;color:#5B6472;font-size:13px;">&#127911; Audio recording &middot; ${escapeHtml(
@@ -137,5 +146,6 @@ function escapeHtml(input: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

@@ -232,6 +232,8 @@ export default function BibleScreen() {
                       const resolved = getVerseCandidates(mark.reference, 1)[0];
                       if (resolved) choose(resolved);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Go to bookmark ${mark.reference}`}
                   >
                     <Text style={styles.chipText}>{mark.reference}</Text>
                   </Pressable>
@@ -245,7 +247,13 @@ export default function BibleScreen() {
               <Text style={textStyles.label}>Cross references</Text>
               <View style={styles.chipRow}>
                 {crossRefs.map((ref) => (
-                  <Pressable key={ref.reference} style={styles.chip} onPress={() => choose(ref)}>
+                  <Pressable
+                    key={ref.reference}
+                    style={styles.chip}
+                    onPress={() => choose(ref)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Go to cross reference ${ref.reference}`}
+                  >
                     <Text style={styles.chipText}>{ref.reference}</Text>
                   </Pressable>
                 ))}

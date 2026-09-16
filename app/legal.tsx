@@ -74,10 +74,12 @@ export default function LegalScreen() {
 
         <Text style={styles.h2}>The Bible text</Text>
         <Text style={styles.p}>
-          Amani bundles two public-domain translations — the King James Version (1611) and the
-          World English Bible — inside the app itself; neither is ever fetched from a server. The
-          cross-references shown alongside a verse are adapted from the Treasury of Scripture
-          Knowledge via the CrossReferences.org dataset, used under CC BY 4.0.
+          Amani bundles five public-domain translations — the King James Version (1611), the
+          World English Bible, the American Standard Version (1901), the Darby Translation
+          (1889/1890), and Young's Literal Translation (1898) — inside the app itself; none of
+          them are ever fetched from a server. The cross-references shown alongside a verse are
+          adapted from the Treasury of Scripture Knowledge via the CrossReferences.org dataset,
+          used under CC BY 4.0.
         </Text>
 
         <Text style={styles.h1}>Terms of use</Text>
