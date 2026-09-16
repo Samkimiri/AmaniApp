@@ -3,12 +3,14 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TextInputContentSizeChangeEventData,
   View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -24,10 +26,12 @@ import {
   ImagePlaceholderIcon,
   MicIcon,
   OpenBookIcon,
+  RedoIcon,
   ShareArrowIcon,
   StopIcon,
   TagIcon,
   TrashIcon,
+  UndoIcon,
 } from "@/components/icons";
 import { VerseCallout } from "@/components/VerseCallout";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
@@ -47,6 +51,10 @@ function isBlankNote(note: SermonNote): boolean {
     note.blocks.every((b) => b.type === "text" && !b.text.trim())
   );
 }
+
+// How many undo steps to keep — generous for a single editing session
+// without letting the history array grow unbounded over a long one.
+const MAX_HISTORY = 100;
 
 function emptyNote(id: string): SermonNote {
   const now = new Date().toISOString();
@@ -89,6 +97,24 @@ export default function NoteEditorScreen() {
   function handleTypingBlur() {
     focusExitTimer.current = setTimeout(() => setFocusMode(false), 80);
   }
+
+  // On web, a multiline TextInput renders as a plain <textarea>, which the
+  // browser gives a fixed default height and a drag handle — a boxed,
+  // scrollable little widget rather than something that reads like part of
+  // an open page. Tracking each block's actual content height (native does
+  // this growth automatically; the web renderer needs it done by hand) and
+  // feeding it back in as that block's height makes the field grow with
+  // what's typed instead, so a subheading followed by a full paragraph
+  // just keeps flowing down the page like one continuous document.
+  const [blockHeights, setBlockHeights] = useState<Record<string, number>>({});
+
+  function autoGrow(blockId: string, minHeight: number) {
+    return (e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
+      setBlockHeights((h) => ({ ...h, [blockId]: Math.max(minHeight, e.nativeEvent.contentSize.height) }));
+    };
+  }
+
+  const openFieldStyle = Platform.OS === "web" ? ({ resize: "none", overflow: "hidden" } as const) : null;
 
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -142,6 +168,98 @@ export default function NoteEditorScreen() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note, loaded]);
+
+  // Undo/redo history — a debounced checkpoint per pause in typing (not
+  // one per keystroke, which would make a single held-down backspace or a
+  // fast sentence take dozens of undo steps to get through). `skipHistoryRef`
+  // stops an undo/redo's own `setNote` call from being recorded as a new
+  // edit, which would otherwise make "redo" unreachable the instant you hit
+  // "undo" once.
+  const historyRef = useRef<SermonNote[]>([]);
+  const historyIndexRef = useRef(-1);
+  const skipHistoryRef = useRef(false);
+  const historyTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  useEffect(() => {
+    if (!loaded) return;
+    if (skipHistoryRef.current) {
+      skipHistoryRef.current = false;
+      return;
+    }
+    if (historyTimer.current) clearTimeout(historyTimer.current);
+    historyTimer.current = setTimeout(() => {
+      historyTimer.current = undefined;
+      const idx = historyIndexRef.current;
+      const stack = historyRef.current.slice(0, idx + 1);
+      stack.push(note);
+      const trimmed = stack.length > MAX_HISTORY ? stack.slice(stack.length - MAX_HISTORY) : stack;
+      historyRef.current = trimmed;
+      historyIndexRef.current = trimmed.length - 1;
+      setCanUndo(historyIndexRef.current > 0);
+      setCanRedo(false);
+    }, 500);
+    return () => {
+      if (historyTimer.current) clearTimeout(historyTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note, loaded]);
+
+  /** Commits whatever hasn't been checkpointed yet (the debounce above
+   * hasn't fired), so hitting undo right after typing doesn't silently
+   * throw away the in-progress edit before stepping back past it. */
+  function commitPendingHistory() {
+    if (!historyTimer.current) return;
+    clearTimeout(historyTimer.current);
+    historyTimer.current = undefined;
+    const idx = historyIndexRef.current;
+    const stack = historyRef.current.slice(0, idx + 1);
+    stack.push(note);
+    historyRef.current = stack;
+    historyIndexRef.current = stack.length - 1;
+  }
+
+  function undo() {
+    commitPendingHistory();
+    const idx = historyIndexRef.current;
+    if (idx <= 0) return;
+    historyIndexRef.current = idx - 1;
+    skipHistoryRef.current = true;
+    setNote(historyRef.current[idx - 1]);
+    setCanUndo(idx - 1 > 0);
+    setCanRedo(true);
+  }
+
+  function redo() {
+    const idx = historyIndexRef.current;
+    if (idx >= historyRef.current.length - 1) return;
+    historyIndexRef.current = idx + 1;
+    skipHistoryRef.current = true;
+    setNote(historyRef.current[idx + 1]);
+    setCanUndo(true);
+    setCanRedo(idx + 1 < historyRef.current.length - 1);
+  }
+
+  // Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or +Y) — web only, since native has no
+  // physical keyboard shortcut convention for this.
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        redo();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note]);
 
   const verseSuggestions = useMemo<VerseResult[]>(
     () => (verseQuery.trim() ? getVerseCandidates(verseQuery, 4) : []),
@@ -457,10 +575,12 @@ export default function NoteEditorScreen() {
             onChangeText={(title) => setNote((n) => ({ ...n, title }))}
             onFocus={handleTypingFocus}
             onBlur={handleTypingBlur}
+            onContentSizeChange={autoGrow("title", 29)}
             placeholder="Note title"
             placeholderTextColor={colors.textFaint}
-            style={styles.titleInput}
+            style={[styles.titleInput, openFieldStyle, { minHeight: blockHeights["title"] ?? 29 }]}
             multiline
+            scrollEnabled={false}
           />
           <TextInput
             value={note.preacher ?? ""}
@@ -497,10 +617,12 @@ export default function NoteEditorScreen() {
                   onChangeText={(text) => updateTextBlock(block.id, text)}
                   onFocus={handleTypingFocus}
                   onBlur={handleTypingBlur}
+                  onContentSizeChange={autoGrow(block.id, 26)}
                   placeholder="Start typing your notes…"
                   placeholderTextColor={colors.textFaint}
-                  style={styles.bodyInput}
+                  style={[styles.bodyInput, openFieldStyle, { minHeight: blockHeights[block.id] ?? 26 }]}
                   multiline
+                  scrollEnabled={false}
                 />
               );
             }
@@ -512,9 +634,12 @@ export default function NoteEditorScreen() {
                   onChangeText={(text) => updateHeadingBlock(block.id, text)}
                   onFocus={handleTypingFocus}
                   onBlur={handleTypingBlur}
+                  onContentSizeChange={autoGrow(block.id, 22)}
                   placeholder="Subheading"
                   placeholderTextColor={colors.textFaint}
-                  style={styles.headingInput}
+                  style={[styles.headingInput, openFieldStyle, { minHeight: blockHeights[block.id] ?? 22 }]}
+                  multiline
+                  scrollEnabled={false}
                 />
               );
             }
@@ -625,47 +750,71 @@ export default function NoteEditorScreen() {
 
         {!focusMode ? (
           <View style={styles.toolbar}>
-            <Pressable
-              style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
-              onPress={toggleRecording}
-              accessibilityRole="button"
-              accessibilityLabel={recording ? "Stop recording" : "Record audio"}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.toolbarScroll}
             >
-              <MicIcon size={18} color={recording ? colors.white : colors.textSecondary} />
-            </Pressable>
-            <Pressable
-              style={styles.toolbarButton}
-              onPress={addPhoto}
-              accessibilityRole="button"
-              accessibilityLabel="Add a photo"
-            >
-              <CameraIcon size={18} />
-            </Pressable>
-            <Pressable
-              style={styles.toolbarButton}
-              onPress={addHeading}
-              accessibilityRole="button"
-              accessibilityLabel="Add a subheading"
-            >
-              <HeadingIcon size={18} />
-            </Pressable>
-            <Pressable
-              style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
-              onPress={() => setVerseBarOpen((v) => !v)}
-              accessibilityRole="button"
-              accessibilityLabel="Insert a Bible verse"
-            >
-              <OpenBookIcon size={18} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
-            </Pressable>
-            <Pressable
-              style={[styles.toolbarButton, tagBarOpen && styles.toolbarButtonActive]}
-              onPress={() => setTagBarOpen((v) => !v)}
-              accessibilityRole="button"
-              accessibilityLabel="Tags"
-            >
-              <TagIcon size={18} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
-            </Pressable>
-            <View style={{ flex: 1 }} />
+              <Pressable
+                style={[styles.toolbarButton, !canUndo && styles.toolbarButtonDisabled]}
+                onPress={undo}
+                disabled={!canUndo}
+                accessibilityRole="button"
+                accessibilityLabel="Undo"
+              >
+                <UndoIcon size={18} color={canUndo ? colors.textSecondary : colors.textFaint} />
+              </Pressable>
+              <Pressable
+                style={[styles.toolbarButton, !canRedo && styles.toolbarButtonDisabled]}
+                onPress={redo}
+                disabled={!canRedo}
+                accessibilityRole="button"
+                accessibilityLabel="Redo"
+              >
+                <RedoIcon size={18} color={canRedo ? colors.textSecondary : colors.textFaint} />
+              </Pressable>
+              <Pressable
+                style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
+                onPress={toggleRecording}
+                accessibilityRole="button"
+                accessibilityLabel={recording ? "Stop recording" : "Record audio"}
+              >
+                <MicIcon size={18} color={recording ? colors.white : colors.textSecondary} />
+              </Pressable>
+              <Pressable
+                style={styles.toolbarButton}
+                onPress={addPhoto}
+                accessibilityRole="button"
+                accessibilityLabel="Add a photo"
+              >
+                <CameraIcon size={18} />
+              </Pressable>
+              <Pressable
+                style={styles.toolbarButton}
+                onPress={addHeading}
+                accessibilityRole="button"
+                accessibilityLabel="Add a subheading"
+              >
+                <HeadingIcon size={18} />
+              </Pressable>
+              <Pressable
+                style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
+                onPress={() => setVerseBarOpen((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel="Insert a Bible verse"
+              >
+                <OpenBookIcon size={18} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
+              </Pressable>
+              <Pressable
+                style={[styles.toolbarButton, tagBarOpen && styles.toolbarButtonActive]}
+                onPress={() => setTagBarOpen((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel="Tags"
+              >
+                <TagIcon size={18} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
+              </Pressable>
+            </ScrollView>
             <View style={styles.savedRow}>
               <View style={[styles.savedDot, saveState === "saving" && { backgroundColor: colors.textFaint }]} />
               <Text style={styles.savedText}>{saveState === "saving" ? "Saving…" : "Saved"}</Text>
@@ -755,6 +904,7 @@ const styles = StyleSheet.create({
   headingInput: {
     fontFamily: fontFamily.sansExtraBold,
     fontSize: 15.5,
+    lineHeight: 22,
     letterSpacing: 0.3,
     textTransform: "uppercase",
     color: colors.navy,
@@ -826,9 +976,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
-  toolbarButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#F5F2EA", alignItems: "center", justifyContent: "center" },
+  toolbarScroll: { flexDirection: "row", alignItems: "center", gap: 14 },
+  toolbarButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F5F2EA",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
   toolbarButtonActive: { backgroundColor: colors.verseBg },
   toolbarButtonRecording: { backgroundColor: "#FF6B5E" },
+  toolbarButtonDisabled: { opacity: 0.4 },
   savedRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   savedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
   savedText: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },

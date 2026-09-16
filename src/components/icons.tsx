@@ -233,6 +233,24 @@ export function HeadingIcon({ size, color = "#5B6472", strokeWidth }: IconProps)
   );
 }
 
+export function UndoIcon({ size, color = "#5B6472", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M7 7 3 11l4 4" />
+      <Path d="M3 11h11a6 6 0 0 1 0 12h-3" />
+    </Svg>
+  );
+}
+
+export function RedoIcon({ size, color = "#5B6472", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M17 7l4 4-4 4" />
+      <Path d="M21 11H10a6 6 0 0 0 0 12h3" />
+    </Svg>
+  );
+}
+
 export function TrashIcon({ size = 18, color = "#5B6472", strokeWidth = 1.8 }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>
