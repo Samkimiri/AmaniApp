@@ -1,13 +1,24 @@
-import React, { useRef, useState } from "react";
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useMemo, useRef, useState } from "react";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as Clipboard from "expo-clipboard";
 import { colors } from "@/theme/colors";
 import { fontFamily } from "@/theme/typography";
-import { ClipboardIcon, CloseIcon, DocumentIcon, ImageCardIcon, LinkIcon, OpenBookIcon, TrashIcon } from "./icons";
-import { firstVerseBlock, noteToHtml, noteToPlainText, SermonNote } from "@/types/note";
+import {
+  ChevronDownIcon,
+  ClipboardIcon,
+  CloseIcon,
+  DocumentIcon,
+  ImageCardIcon,
+  LinkIcon,
+  SearchIcon,
+  TrashIcon,
+} from "./icons";
+import { VerseImageCard, VERSE_CARD_HEIGHT, VERSE_CARD_WIDTH } from "./VerseImageCard";
+import { shareVerseImageUri } from "@/lib/shareVerseImage";
+import { noteToHtml, noteToPlainText, SermonNote, VerseBlock } from "@/types/note";
 import { useAlert } from "@/context/AlertContext";
 
 interface ShareSheetProps {
@@ -17,14 +28,28 @@ interface ShareSheetProps {
   onDelete: () => void;
 }
 
-/** Triggers a real browser download of a data: URI — web only. */
-function downloadDataUrl(dataUrl: string, filename: string) {
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+interface VerseOption {
+  block: VerseBlock;
+  /** The nearest preceding subheading's text, if any — shown so it's
+   * easy to tell apart two verses under different points in a long note. */
+  context?: string;
+}
+
+/** Every verse block in the note, each paired with whichever subheading
+ * ("point") most recently preceded it — used to let the verse-card picker
+ * search across both, e.g. typing a point's title to find the verse
+ * under it. */
+function verseOptionsFor(note: SermonNote): VerseOption[] {
+  const options: VerseOption[] = [];
+  let currentContext: string | undefined;
+  for (const block of note.blocks) {
+    if (block.type === "heading") {
+      currentContext = block.text.trim() || undefined;
+    } else if (block.type === "verse") {
+      options.push({ block, context: currentContext });
+    }
+  }
+  return options;
 }
 
 /** Opens the note's formatted HTML in a new tab and prints it — web
@@ -52,8 +77,23 @@ function printNoteInNewTab(note: SermonNote) {
 export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps) {
   const shotRef = useRef<ViewShot>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const verse = firstVerseBlock(note);
   const showAlert = useAlert();
+
+  const verseOptions = useMemo(() => verseOptionsFor(note), [note]);
+  const [selectedVerseId, setSelectedVerseId] = useState<string | undefined>(verseOptions[0]?.block.id);
+  const selectedOption =
+    verseOptions.find((o) => o.block.id === selectedVerseId) ?? verseOptions[0];
+  const verse = selectedOption?.block;
+
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [verseSearch, setVerseSearch] = useState("");
+  const filteredOptions = useMemo(() => {
+    const q = verseSearch.trim().toLowerCase();
+    if (!q) return verseOptions;
+    return verseOptions.filter((o) =>
+      [o.block.reference, o.block.text, o.context].filter(Boolean).join(" ").toLowerCase().includes(q)
+    );
+  }, [verseOptions, verseSearch]);
 
   async function shareVerseImage() {
     if (!verse) {
@@ -68,14 +108,7 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
       // @ts-ignore - capture() exists on the ViewShot ref at runtime
       const uri: string = await shotRef.current?.capture?.();
       if (!uri) return;
-      if (Platform.OS === "web") {
-        // expo-sharing's web fallback only works via navigator.share, which
-        // is unsupported on most desktop browsers and isn't meant for
-        // data: URIs — a direct file download works everywhere instead.
-        downloadDataUrl(uri, "amani-verse-card.png");
-      } else {
-        await Sharing.shareAsync(uri, { mimeType: "image/png" });
-      }
+      await shareVerseImageUri(uri, "amani-verse-card.png");
     } catch (err) {
       showAlert({ title: "Couldn't create the image", message: String(err) });
     } finally {
@@ -161,6 +194,61 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
           onPress={shareVerseImage}
           busy={busy === "image"}
         />
+
+        {verseOptions.length > 1 ? (
+          <View style={styles.verseChooser}>
+            <Pressable
+              onPress={() => setPickerOpen((o) => !o)}
+              style={styles.verseChooserToggle}
+              accessibilityRole="button"
+              accessibilityLabel="Choose which verse the card uses"
+            >
+              <Text style={styles.verseChooserToggleText} numberOfLines={1}>
+                Card verse: {verse?.reference ?? "None"}
+              </Text>
+              <ChevronDownIcon size={12} strokeWidth={2.5} />
+            </Pressable>
+            {pickerOpen ? (
+              <View>
+                <View style={styles.verseSearchBar}>
+                  <SearchIcon size={14} color={colors.textMuted} />
+                  <TextInput
+                    value={verseSearch}
+                    onChangeText={setVerseSearch}
+                    placeholder="Search this note's points & verses"
+                    placeholderTextColor={colors.textMuted}
+                    style={styles.verseSearchInput}
+                    autoCorrect={false}
+                  />
+                </View>
+                <ScrollView style={styles.verseOptionList} keyboardShouldPersistTaps="handled">
+                  {filteredOptions.map((o) => (
+                    <Pressable
+                      key={o.block.id}
+                      onPress={() => {
+                        setSelectedVerseId(o.block.id);
+                        setPickerOpen(false);
+                        setVerseSearch("");
+                      }}
+                      style={styles.verseOptionRow}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Use ${o.block.reference} for the verse card`}
+                    >
+                      <Text style={styles.verseOptionRef}>{o.block.reference}</Text>
+                      {o.context ? <Text style={styles.verseOptionContext}>Under: {o.context}</Text> : null}
+                      <Text style={styles.verseOptionText} numberOfLines={1}>
+                        {o.block.text}
+                      </Text>
+                    </Pressable>
+                  ))}
+                  {filteredOptions.length === 0 ? (
+                    <Text style={styles.verseOptionEmpty}>No points or verses match that search.</Text>
+                  ) : null}
+                </ScrollView>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
         <Row
           icon={<DocumentIcon />}
           iconBg="#EEF2F6"
@@ -196,26 +284,13 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
 
       {/* Offscreen verse-card render target for image capture. */}
       <View style={[styles.offscreen, { pointerEvents: "none" }]}>
-        <ViewShot ref={shotRef} options={{ format: "png", quality: 0.95 }}>
-          <View style={styles.card}>
-            <View style={styles.cardBrandRow}>
-              <OpenBookIcon size={16} color={colors.goldLight} />
-              <Text style={styles.cardBrand}>AMANI</Text>
-            </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardQuoteMark}>&ldquo;</Text>
-              <Text style={styles.cardVerseText}>{verse?.text ?? note.title}</Text>
-              <View style={styles.cardRule} />
-              {verse ? <Text style={styles.cardReference}>{verse.reference}</Text> : null}
-            </View>
-            <View style={styles.cardFooter}>
-              <Text style={styles.cardFooterTitle}>{note.title || "Amani note"}</Text>
-              <Text style={styles.cardFooterMeta}>
-                {[note.church, note.date].filter(Boolean).join(" · ")}
-              </Text>
-            </View>
-          </View>
-        </ViewShot>
+        <VerseImageCard
+          ref={shotRef}
+          verseText={verse?.text ?? note.title}
+          reference={verse?.reference}
+          footerTitle={note.title || "Amani note"}
+          footerMeta={[note.church, note.date].filter(Boolean).join(" · ")}
+        />
       </View>
     </Modal>
   );
@@ -257,9 +332,6 @@ function Row({
   );
 }
 
-const CARD_WIDTH = 360;
-const CARD_HEIGHT = 580;
-
 const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: colors.scrim },
   sheet: {
@@ -288,36 +360,44 @@ const styles = StyleSheet.create({
   rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 14.5, color: colors.textPrimary },
   rowSubtitle: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 1 },
 
-  offscreen: { position: "absolute", top: 0, left: -9999, width: CARD_WIDTH, height: CARD_HEIGHT },
-  card: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    backgroundColor: colors.navy,
+  offscreen: { position: "absolute", top: 0, left: -9999, width: VERSE_CARD_WIDTH, height: VERSE_CARD_HEIGHT },
+
+  verseChooser: { marginTop: -4, marginBottom: 4 },
+  verseChooserToggle: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 40,
-    paddingHorizontal: 34,
+    gap: 6,
+    paddingVertical: 8,
+    paddingLeft: 58,
   },
-  cardBrandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  cardBrand: { fontFamily: fontFamily.sansExtraBold, fontSize: 13, letterSpacing: 2, color: colors.goldLight },
-  cardBody: { alignItems: "center", gap: 16 },
-  cardQuoteMark: { fontFamily: fontFamily.serifSemibold, fontSize: 46, color: colors.goldLight, opacity: 0.55 },
-  cardVerseText: {
-    fontFamily: fontFamily.serifSemibold,
-    fontSize: 23,
-    lineHeight: 33,
-    color: colors.white,
-    textAlign: "center",
+  verseChooserToggleText: { fontFamily: fontFamily.sansSemibold, fontSize: 12, color: colors.textMuted, flexShrink: 1 },
+  verseSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: 58,
+    marginBottom: 8,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
   },
-  cardRule: { width: 34, height: 2, backgroundColor: colors.goldLight },
-  cardReference: {
-    fontFamily: fontFamily.sansBold,
+  verseSearchInput: { flex: 1, fontFamily: fontFamily.sansRegular, fontSize: 13, color: colors.textPrimary },
+  verseOptionList: { maxHeight: 160, marginLeft: 58 },
+  verseOptionRow: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  verseOptionRef: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.navy },
+  verseOptionContext: { fontFamily: fontFamily.sansMedium, fontSize: 11, color: colors.gold, marginTop: 1 },
+  verseOptionText: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  verseOptionEmpty: {
+    fontFamily: fontFamily.sansRegular,
     fontSize: 12,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    color: colors.goldLight,
+    color: colors.textMuted,
+    paddingVertical: 10,
   },
-  cardFooter: { alignItems: "center", gap: 4 },
-  cardFooterTitle: { fontFamily: fontFamily.sansBold, fontSize: 13, color: "#EDE7D8" },
-  cardFooterMeta: { fontFamily: fontFamily.sansRegular, fontSize: 11.5, color: "#93A4BC" },
 });

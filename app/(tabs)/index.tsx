@@ -1,17 +1,21 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ViewShot from "react-native-view-shot";
 import { colors } from "@/theme/colors";
 import { fontFamily, textStyles } from "@/theme/typography";
 import { OpenBookIcon, PlusIcon, NotesIcon, UserIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { NoteCard } from "@/components/NoteCard";
 import { VerseOfTheDayCard } from "@/components/VerseOfTheDayCard";
+import { VerseImageCard, VERSE_CARD_HEIGHT, VERSE_CARD_WIDTH } from "@/components/VerseImageCard";
 import { InstallBanner } from "@/components/InstallBanner";
 import { useNotes } from "@/hooks/useNotes";
 import { getVerseOfTheDay } from "@/data/verseOfTheDay";
 import { useActiveTranslation } from "@/data/bible";
+import { shareVerseImageUri } from "@/lib/shareVerseImage";
+import { useAlert } from "@/context/AlertContext";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -30,6 +34,25 @@ export default function HomeScreen() {
     month: "long",
     day: "numeric",
   });
+
+  const shotRef = useRef<ViewShot>(null);
+  const [sharingVerse, setSharingVerse] = useState(false);
+  const showAlert = useAlert();
+
+  async function shareDailyVerse() {
+    if (!verseOfTheDay) return;
+    try {
+      setSharingVerse(true);
+      // @ts-ignore - capture() exists on the ViewShot ref at runtime
+      const uri: string = await shotRef.current?.capture?.();
+      if (!uri) return;
+      await shareVerseImageUri(uri, "amani-verse-of-the-day.png");
+    } catch (err) {
+      showAlert({ title: "Couldn't create the image", message: String(err) });
+    } finally {
+      setSharingVerse(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -53,7 +76,7 @@ export default function HomeScreen() {
 
         {verseOfTheDay ? (
           <View style={{ marginTop: 20 }}>
-            <VerseOfTheDayCard verse={verseOfTheDay} />
+            <VerseOfTheDayCard verse={verseOfTheDay} onShare={shareDailyVerse} sharing={sharingVerse} />
           </View>
         ) : null}
 
@@ -98,6 +121,12 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {verseOfTheDay ? (
+        <View style={[styles.offscreen, { pointerEvents: "none" }]}>
+          <VerseImageCard ref={shotRef} verseText={verseOfTheDay.text} reference={verseOfTheDay.reference} footerTitle="Verse of the Day" />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -105,6 +134,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, paddingBottom: 40 },
+  offscreen: { position: "absolute", top: 0, left: -9999, width: VERSE_CARD_WIDTH, height: VERSE_CARD_HEIGHT },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brand: { flexDirection: "row", alignItems: "center", gap: 8 },
   brandText: { fontFamily: fontFamily.serifBold, fontSize: 21, color: colors.navy },

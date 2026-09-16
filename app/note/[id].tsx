@@ -309,6 +309,10 @@ export default function NoteEditorScreen() {
     }));
   }
 
+  function removeBlock(blockId: string) {
+    setNote((n) => ({ ...n, blocks: n.blocks.filter((b) => b.id !== blockId) }));
+  }
+
   function addTag() {
     const tag = tagInput.trim().replace(/,$/, "");
     if (!tag) return;
@@ -637,19 +641,33 @@ export default function NoteEditorScreen() {
             }
             if (block.type === "heading") {
               return (
-                <TextInput
-                  key={block.id}
-                  value={block.text}
-                  onChangeText={(text) => updateHeadingBlock(block.id, text)}
-                  onFocus={handleTypingFocus}
-                  onBlur={handleTypingBlur}
-                  onContentSizeChange={autoGrow(block.id, 22)}
-                  placeholder="Subheading"
-                  placeholderTextColor={colors.textFaint}
-                  style={[styles.headingInput, openFieldStyle, { minHeight: blockHeights[block.id] ?? 22 }]}
-                  multiline
-                  scrollEnabled={false}
-                />
+                <View key={block.id} style={styles.headingRow}>
+                  <TextInput
+                    value={block.text}
+                    onChangeText={(text) => updateHeadingBlock(block.id, text)}
+                    onFocus={handleTypingFocus}
+                    onBlur={handleTypingBlur}
+                    onContentSizeChange={autoGrow(block.id, 22)}
+                    placeholder="Subheading"
+                    placeholderTextColor={colors.textFaint}
+                    style={[
+                      styles.headingInput,
+                      openFieldStyle,
+                      { minHeight: blockHeights[block.id] ?? 22, flex: 1 },
+                    ]}
+                    multiline
+                    scrollEnabled={false}
+                  />
+                  <Pressable
+                    onPress={() => removeBlock(block.id)}
+                    hitSlop={8}
+                    style={styles.headingRemoveButton}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove subheading"
+                  >
+                    <TrashIcon size={14} color={colors.textFaint} />
+                  </Pressable>
+                </View>
               );
             }
             if (block.type === "verse") {
@@ -929,6 +947,7 @@ const styles = StyleSheet.create({
   tagChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.verseText },
   tagChipRemove: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.verseText, opacity: 0.6 },
   bodyInput: { fontFamily: fontFamily.sansRegular, fontSize: 15, lineHeight: 26, color: colors.textSecondary, padding: 0 },
+  headingRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 6 },
   headingInput: {
     fontFamily: fontFamily.sansExtraBold,
     fontSize: 15.5,
@@ -937,8 +956,8 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: colors.navy,
     padding: 0,
-    marginTop: 6,
   },
+  headingRemoveButton: { width: 22, height: 22, alignItems: "center", justifyContent: "center" },
   colorPickerRow: { marginTop: 8, paddingHorizontal: 2 },
   imageBlock: { borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   image: { width: "100%", height: 180, backgroundColor: "#EFE7D8" },
