@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,6 +26,7 @@ import {
   ShareArrowIcon,
   StopIcon,
   TagIcon,
+  TrashIcon,
 } from "@/components/icons";
 import { VerseCallout } from "@/components/VerseCallout";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
@@ -71,7 +73,21 @@ export default function NoteEditorScreen() {
   const [tagInput, setTagInput] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const [shareOpen, setShareOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  // A short delay before actually leaving focus mode on blur, so tabbing
+  // from one text field straight into another (e.g. title -> body) doesn't
+  // flash the header/toolbar back in for a single frame in between.
+  const focusExitTimer = useRef<ReturnType<typeof setTimeout>>();
   const showAlert = useAlert();
+
+  function handleTypingFocus() {
+    if (focusExitTimer.current) clearTimeout(focusExitTimer.current);
+    setFocusMode(true);
+  }
+
+  function handleTypingBlur() {
+    focusExitTimer.current = setTimeout(() => setFocusMode(false), 80);
+  }
 
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -92,6 +108,7 @@ export default function NoteEditorScreen() {
       soundRef.current?.unloadAsync();
       if (playingObjectUrlRef.current) URL.revokeObjectURL(playingObjectUrlRef.current);
       recordingRef.current?.stopAndUnloadAsync().catch(() => {});
+      if (focusExitTimer.current) clearTimeout(focusExitTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -341,6 +358,24 @@ export default function NoteEditorScreen() {
     router.back();
   }
 
+  function confirmDeleteNote() {
+    showAlert({
+      title: "Delete this note?",
+      message: `"${note.title || "Untitled note"}" will be permanently deleted from this device. This can't be undone.`,
+      actions: [
+        {
+          label: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await notesStore.remove(note.id);
+            router.back();
+          },
+        },
+        { label: "Cancel", style: "cancel" },
+      ],
+    });
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <KeyboardAvoidingView
@@ -348,41 +383,68 @@ export default function NoteEditorScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={8}
       >
-        <View style={styles.header}>
-          <Pressable
-            onPress={goBack}
-            style={styles.headerButton}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-          >
-            <ChevronLeftIcon size={20} />
-          </Pressable>
-          <View style={{ alignItems: "center" }}>
-            <TextInput
-              value={note.church}
-              onChangeText={(church) => setNote((n) => ({ ...n, church }))}
-              placeholder="Add church / series"
-              placeholderTextColor={colors.textFaint}
-              style={styles.churchInput}
-            />
-            <Text style={styles.dateText}>{note.date}</Text>
+        {focusMode ? (
+          <View style={styles.focusBar}>
+            <Pressable
+              onPress={() => Keyboard.dismiss()}
+              style={styles.doneButton}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Done typing"
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </Pressable>
           </View>
-          <Pressable
-            onPress={() => setShareOpen(true)}
-            style={styles.headerButtonDark}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Share this note"
-          >
-            <ShareArrowIcon size={17} color={colors.white} />
-          </Pressable>
-        </View>
+        ) : (
+          <View style={styles.header}>
+            <Pressable
+              onPress={goBack}
+              style={styles.headerButton}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+            >
+              <ChevronLeftIcon size={20} />
+            </Pressable>
+            <View style={{ alignItems: "center" }}>
+              <TextInput
+                value={note.church}
+                onChangeText={(church) => setNote((n) => ({ ...n, church }))}
+                placeholder="Add church / series"
+                placeholderTextColor={colors.textFaint}
+                style={styles.churchInput}
+              />
+              <Text style={styles.dateText}>{note.date}</Text>
+            </View>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={confirmDeleteNote}
+                style={styles.headerButton}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Delete note"
+              >
+                <TrashIcon size={19} color={colors.danger} />
+              </Pressable>
+              <Pressable
+                onPress={() => setShareOpen(true)}
+                style={styles.headerButtonDark}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Share this note"
+              >
+                <ShareArrowIcon size={17} color={colors.white} />
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <TextInput
             value={note.title}
             onChangeText={(title) => setNote((n) => ({ ...n, title }))}
+            onFocus={handleTypingFocus}
+            onBlur={handleTypingBlur}
             placeholder="Note title"
             placeholderTextColor={colors.textFaint}
             style={styles.titleInput}
@@ -391,6 +453,8 @@ export default function NoteEditorScreen() {
           <TextInput
             value={note.preacher ?? ""}
             onChangeText={(preacher) => setNote((n) => ({ ...n, preacher }))}
+            onFocus={handleTypingFocus}
+            onBlur={handleTypingBlur}
             placeholder="Add preacher"
             placeholderTextColor={colors.textFaint}
             style={styles.preacherInput}
@@ -419,6 +483,8 @@ export default function NoteEditorScreen() {
                   key={block.id}
                   value={block.text}
                   onChangeText={(text) => updateTextBlock(block.id, text)}
+                  onFocus={handleTypingFocus}
+                  onBlur={handleTypingBlur}
                   placeholder="Start typing your notes…"
                   placeholderTextColor={colors.textFaint}
                   style={styles.bodyInput}
@@ -531,45 +597,47 @@ export default function NoteEditorScreen() {
           </View>
         ) : null}
 
-        <View style={styles.toolbar}>
-          <Pressable
-            style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
-            onPress={toggleRecording}
-            accessibilityRole="button"
-            accessibilityLabel={recording ? "Stop recording" : "Record audio"}
-          >
-            <MicIcon size={18} color={recording ? colors.white : colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            style={styles.toolbarButton}
-            onPress={addPhoto}
-            accessibilityRole="button"
-            accessibilityLabel="Add a photo"
-          >
-            <CameraIcon size={18} />
-          </Pressable>
-          <Pressable
-            style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
-            onPress={() => setVerseBarOpen((v) => !v)}
-            accessibilityRole="button"
-            accessibilityLabel="Insert a Bible verse"
-          >
-            <OpenBookIcon size={18} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            style={[styles.toolbarButton, tagBarOpen && styles.toolbarButtonActive]}
-            onPress={() => setTagBarOpen((v) => !v)}
-            accessibilityRole="button"
-            accessibilityLabel="Tags"
-          >
-            <TagIcon size={18} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
-          </Pressable>
-          <View style={{ flex: 1 }} />
-          <View style={styles.savedRow}>
-            <View style={[styles.savedDot, saveState === "saving" && { backgroundColor: colors.textFaint }]} />
-            <Text style={styles.savedText}>{saveState === "saving" ? "Saving…" : "Saved"}</Text>
+        {!focusMode ? (
+          <View style={styles.toolbar}>
+            <Pressable
+              style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
+              onPress={toggleRecording}
+              accessibilityRole="button"
+              accessibilityLabel={recording ? "Stop recording" : "Record audio"}
+            >
+              <MicIcon size={18} color={recording ? colors.white : colors.textSecondary} />
+            </Pressable>
+            <Pressable
+              style={styles.toolbarButton}
+              onPress={addPhoto}
+              accessibilityRole="button"
+              accessibilityLabel="Add a photo"
+            >
+              <CameraIcon size={18} />
+            </Pressable>
+            <Pressable
+              style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
+              onPress={() => setVerseBarOpen((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="Insert a Bible verse"
+            >
+              <OpenBookIcon size={18} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
+            </Pressable>
+            <Pressable
+              style={[styles.toolbarButton, tagBarOpen && styles.toolbarButtonActive]}
+              onPress={() => setTagBarOpen((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel="Tags"
+            >
+              <TagIcon size={18} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
+            </Pressable>
+            <View style={{ flex: 1 }} />
+            <View style={styles.savedRow}>
+              <View style={[styles.savedDot, saveState === "saving" && { backgroundColor: colors.textFaint }]} />
+              <Text style={styles.savedText}>{saveState === "saving" ? "Saving…" : "Saved"}</Text>
+            </View>
           </View>
-        </View>
+        ) : null}
       </KeyboardAvoidingView>
 
       <ShareSheet
@@ -603,6 +671,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+  focusBar: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  doneButton: {
+    height: 34,
+    paddingHorizontal: 16,
+    borderRadius: 17,
+    backgroundColor: colors.navy,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  doneButtonText: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.white },
   churchInput: {
     fontFamily: fontFamily.sansBold,
     fontSize: 12.5,
