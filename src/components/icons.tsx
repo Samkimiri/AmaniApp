@@ -104,6 +104,14 @@ export function ChevronDownIcon({ size, color = "#FFFFFF", strokeWidth = 2.6 }: 
   );
 }
 
+export function ChevronUpIcon({ size, color = "#FFFFFF", strokeWidth = 2.6 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M6 15l6-6 6 6" />
+    </Svg>
+  );
+}
+
 export function MicIcon({ size, color = "#5B6472", strokeWidth }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>
