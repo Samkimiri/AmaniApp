@@ -54,6 +54,14 @@ export function NotesIcon({ size, color = "#A6AEB8", strokeWidth }: IconProps) {
   );
 }
 
+export function MoonIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />
+    </Svg>
+  );
+}
+
 export function UserIcon({ size, color = "#A6AEB8", strokeWidth }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>

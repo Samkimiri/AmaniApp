@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { DocumentIcon } from "./icons";
 import { exportBackup, importBackup, pickBackupJson } from "@/data/backup";
@@ -14,6 +15,8 @@ import { useAlert } from "@/context/AlertContext";
 export function BackupSection() {
   const [busy, setBusy] = useState<"export" | "import" | null>(null);
   const showAlert = useAlert();
+  const colors = useColors();
+  const styles = makeStyles(colors);
 
   async function handleExport() {
     try {
@@ -81,39 +84,47 @@ export function BackupSection() {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    width: "100%",
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    padding: 16,
-    marginTop: 16,
-  },
-  headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.verseBg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
-  rowSubtitle: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 2, lineHeight: 17 },
-  actionsRow: { flexDirection: "row", gap: 10, marginTop: 16 },
-  button: {
-    flex: 1,
-    height: 42,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-  },
-  buttonText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.textSecondary },
-  buttonPrimary: { backgroundColor: colors.navy, borderColor: colors.navy },
-  buttonPrimaryText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.white },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    card: {
+      width: "100%",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      padding: 16,
+      marginTop: 16,
+    },
+    headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+    iconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: colors.verseBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
+    rowSubtitle: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+      lineHeight: 17,
+    },
+    actionsRow: { flexDirection: "row", gap: 10, marginTop: 16 },
+    button: {
+      flex: 1,
+      height: 42,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 8,
+    },
+    buttonText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.textSecondary },
+    buttonPrimary: { backgroundColor: colors.navy, borderColor: colors.navy },
+    buttonPrimaryText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.white },
+  });
+}

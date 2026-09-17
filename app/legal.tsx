@@ -2,8 +2,9 @@ import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "@/theme/colors";
-import { fontFamily, textStyles } from "@/theme/typography";
+import { ColorPalette } from "@/theme/colors";
+import { useColors, useTextStyles } from "@/context/ThemeContext";
+import { fontFamily } from "@/theme/typography";
 import { ChevronLeftIcon } from "@/components/icons";
 
 /**
@@ -15,6 +16,10 @@ import { ChevronLeftIcon } from "@/components/icons";
  * (this screen is reachable at /legal on the deployed site).
  */
 export default function LegalScreen() {
+  const colors = useColors();
+  const textStyles = useTextStyles();
+  const styles = makeStyles(colors);
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
@@ -44,16 +49,20 @@ export default function LegalScreen() {
         </Text>
 
         <Text style={styles.h2}>What Amani accesses, and why</Text>
-        <Bullet title="Camera and photo library">
+        <Bullet styles={styles} title="Camera and photo library">
           Only when you choose to attach a picture to a note. The photo is saved on your device as
           part of that note; Amani never uploads it anywhere.
         </Bullet>
-        <Bullet title="Microphone">
+        <Bullet styles={styles} title="Microphone">
           Only when you tap the record button to attach sermon audio to a note. The recording is
           saved on your device the same way.
         </Bullet>
-        <Bullet title="Notifications">Amani doesn't use notifications.</Bullet>
-        <Bullet title="Location">Amani never asks for or accesses your location.</Bullet>
+        <Bullet styles={styles} title="Notifications">
+          Amani doesn't use notifications.
+        </Bullet>
+        <Bullet styles={styles} title="Location">
+          Amani never asks for or accesses your location.
+        </Bullet>
 
         <Text style={styles.h2}>What we don't do</Text>
         <Text style={styles.p}>
@@ -101,7 +110,15 @@ export default function LegalScreen() {
   );
 }
 
-function Bullet({ title, children }: { title: string; children: React.ReactNode }) {
+function Bullet({
+  title,
+  children,
+  styles,
+}: {
+  title: string;
+  children: React.ReactNode;
+  styles: ReturnType<typeof makeStyles>;
+}) {
   return (
     <View style={styles.bulletRow}>
       <View style={styles.bulletDot} />
@@ -113,37 +130,45 @@ function Bullet({ title, children }: { title: string; children: React.ReactNode 
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-  },
-  headerButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  content: { paddingHorizontal: 24, paddingBottom: 60 },
-  updated: { fontFamily: fontFamily.sansMedium, fontSize: 12, color: colors.textFaint, marginBottom: 18 },
-  h1: {
-    fontFamily: fontFamily.serifBold,
-    fontSize: 20,
-    color: colors.textPrimary,
-    marginTop: 22,
-    marginBottom: 8,
-  },
-  h2: {
-    fontFamily: fontFamily.sansExtraBold,
-    fontSize: 11.5,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    color: colors.gold,
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  p: { fontFamily: fontFamily.sansRegular, fontSize: 14, lineHeight: 22, color: colors.textSecondary },
-  bulletRow: { flexDirection: "row", gap: 10, marginBottom: 10, paddingRight: 4 },
-  bulletDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.gold, marginTop: 8 },
-  bulletText: { flex: 1, fontFamily: fontFamily.sansRegular, fontSize: 14, lineHeight: 21, color: colors.textSecondary },
-  bulletTitle: { fontFamily: fontFamily.sansBold, color: colors.textPrimary },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 8,
+      paddingBottom: 8,
+    },
+    headerButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+    content: { paddingHorizontal: 24, paddingBottom: 60 },
+    updated: { fontFamily: fontFamily.sansMedium, fontSize: 12, color: colors.textFaint, marginBottom: 18 },
+    h1: {
+      fontFamily: fontFamily.serifBold,
+      fontSize: 20,
+      color: colors.textPrimary,
+      marginTop: 22,
+      marginBottom: 8,
+    },
+    h2: {
+      fontFamily: fontFamily.sansExtraBold,
+      fontSize: 11.5,
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+      color: colors.gold,
+      marginTop: 20,
+      marginBottom: 8,
+    },
+    p: { fontFamily: fontFamily.sansRegular, fontSize: 14, lineHeight: 22, color: colors.textSecondary },
+    bulletRow: { flexDirection: "row", gap: 10, marginBottom: 10, paddingRight: 4 },
+    bulletDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.gold, marginTop: 8 },
+    bulletText: {
+      flex: 1,
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      color: colors.textSecondary,
+    },
+    bulletTitle: { fontFamily: fontFamily.sansBold, color: colors.textPrimary },
+  });
+}

@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { BackspaceIcon } from "./icons";
 
@@ -20,6 +21,9 @@ export function PinPad({
   error?: boolean;
   dark?: boolean;
 }) {
+  const colors = useColors();
+  const styles = makeStyles(colors);
+
   function press(key: string) {
     if (key === "backspace") {
       onChange(value.slice(0, -1));
@@ -80,28 +84,30 @@ export function PinPad({
 
 const DOT_SIZE = 14;
 
-const styles = StyleSheet.create({
-  dots: { flexDirection: "row", justifyContent: "center", gap: 16, marginBottom: 36 },
-  dot: {
-    width: DOT_SIZE,
-    height: DOT_SIZE,
-    borderRadius: DOT_SIZE / 2,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
-  dotDark: { borderColor: "rgba(255,255,255,0.35)" },
-  dotFilled: { backgroundColor: colors.navy, borderColor: colors.navy },
-  dotFilledDark: { backgroundColor: colors.goldLight, borderColor: colors.goldLight },
-  dotError: { backgroundColor: colors.danger, borderColor: colors.danger },
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    dots: { flexDirection: "row", justifyContent: "center", gap: 16, marginBottom: 36 },
+    dot: {
+      width: DOT_SIZE,
+      height: DOT_SIZE,
+      borderRadius: DOT_SIZE / 2,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+    },
+    dotDark: { borderColor: "rgba(255,255,255,0.35)" },
+    dotFilled: { backgroundColor: colors.navy, borderColor: colors.navy },
+    dotFilledDark: { backgroundColor: colors.goldLight, borderColor: colors.goldLight },
+    dotError: { backgroundColor: colors.danger, borderColor: colors.danger },
 
-  grid: { flexDirection: "row", flexWrap: "wrap", width: 264, alignSelf: "center" },
-  key: {
-    width: 88,
-    height: 72,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  keyPressed: { opacity: 0.5 },
-  keyText: { fontFamily: fontFamily.serifSemibold, fontSize: 26, color: colors.textPrimary },
-  keyTextDark: { color: colors.white },
-});
+    grid: { flexDirection: "row", flexWrap: "wrap", width: 264, alignSelf: "center" },
+    key: {
+      width: 88,
+      height: 72,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    keyPressed: { opacity: 0.5 },
+    keyText: { fontFamily: fontFamily.serifSemibold, fontSize: 26, color: colors.textPrimary },
+    keyTextDark: { color: colors.white },
+  });
+}

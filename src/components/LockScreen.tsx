@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { OpenBookIcon } from "./icons";
 import { PinPad } from "./PinPad";
@@ -12,6 +13,8 @@ export function LockScreen({ onUnlock }: { onUnlock: (pin: string) => Promise<bo
   const [error, setError] = useState(false);
   const [checking, setChecking] = useState(false);
   const shake = useRef(new Animated.Value(0)).current;
+  const colors = useColors();
+  const styles = makeStyles(colors);
 
   useEffect(() => {
     if (value.length < 4 || checking) return;
@@ -61,22 +64,24 @@ export function LockScreen({ onUnlock }: { onUnlock: (pin: string) => Promise<bo
   );
 }
 
-const styles = StyleSheet.create({
-  // Rendered as a sibling on top of the still-mounted app Stack (see
-  // _layout.tsx) so locking/unlocking doesn't reset navigation state —
-  // absolute positioning is what makes it actually cover the screen
-  // instead of just taking up space in normal document flow.
-  screen: { ...(StyleSheet.absoluteFillObject as ViewStyle), backgroundColor: colors.navy, zIndex: 100 },
-  content: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
-  brand: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 36 },
-  brandText: { fontFamily: fontFamily.serifBold, fontSize: 24, color: colors.white },
-  title: { fontFamily: fontFamily.serifSemibold, fontSize: 19, color: colors.white, marginBottom: 6 },
-  subtitle: {
-    fontFamily: fontFamily.sansMedium,
-    fontSize: 13,
-    color: "#93A4BC",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitleError: { color: "#F0A8A0" },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    // Rendered as a sibling on top of the still-mounted app Stack (see
+    // _layout.tsx) so locking/unlocking doesn't reset navigation state —
+    // absolute positioning is what makes it actually cover the screen
+    // instead of just taking up space in normal document flow.
+    screen: { ...(StyleSheet.absoluteFillObject as ViewStyle), backgroundColor: colors.navy, zIndex: 100 },
+    content: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
+    brand: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 36 },
+    brandText: { fontFamily: fontFamily.serifBold, fontSize: 24, color: colors.white },
+    title: { fontFamily: fontFamily.serifSemibold, fontSize: 19, color: colors.white, marginBottom: 6 },
+    subtitle: {
+      fontFamily: fontFamily.sansMedium,
+      fontSize: 13,
+      color: "#93A4BC",
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    subtitleError: { color: "#F0A8A0" },
+  });
+}

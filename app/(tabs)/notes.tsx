@@ -2,8 +2,9 @@ import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "@/theme/colors";
-import { fontFamily, textStyles } from "@/theme/typography";
+import { ColorPalette } from "@/theme/colors";
+import { useColors, useTextStyles } from "@/context/ThemeContext";
+import { fontFamily } from "@/theme/typography";
 import { SearchIcon } from "@/components/icons";
 import { NoteCard } from "@/components/NoteCard";
 import { useNotes } from "@/hooks/useNotes";
@@ -33,6 +34,9 @@ export default function NotesScreen() {
   const showAlert = useAlert();
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const colors = useColors();
+  const textStyles = useTextStyles();
+  const styles = makeStyles(colors);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -136,39 +140,41 @@ export default function NotesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
-  hint: { fontSize: 12, color: colors.textFaint, marginTop: 2 },
-  searchBar: {
-    marginHorizontal: 24,
-    marginBottom: 12,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-  },
-  searchInput: { flex: 1, fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textPrimary },
-  tagRow: { paddingHorizontal: 24, gap: 8, paddingBottom: 14 },
-  tagChip: {
-    height: 32,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tagChipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
-  tagChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.textSecondary },
-  tagChipTextActive: { color: colors.white },
-  list: { paddingHorizontal: 24, paddingBottom: 40, flexGrow: 1 },
-  empty: { paddingVertical: 40 },
-  emptyText: { fontSize: 13.5, color: colors.textSecondary, lineHeight: 20, textAlign: "center" },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
+    hint: { fontSize: 12, color: colors.textFaint, marginTop: 2 },
+    searchBar: {
+      marginHorizontal: 24,
+      marginBottom: 12,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: 14,
+    },
+    searchInput: { flex: 1, fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textPrimary },
+    tagRow: { paddingHorizontal: 24, gap: 8, paddingBottom: 14 },
+    tagChip: {
+      height: 32,
+      paddingHorizontal: 13,
+      borderRadius: 999,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tagChipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+    tagChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.textSecondary },
+    tagChipTextActive: { color: colors.white },
+    list: { paddingHorizontal: 24, paddingBottom: 40, flexGrow: 1 },
+    empty: { paddingVertical: 40 },
+    emptyText: { fontSize: 13.5, color: colors.textSecondary, lineHeight: 20, textAlign: "center" },
+  });
+}

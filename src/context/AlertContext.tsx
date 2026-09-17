@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useState, type PropsWithChildren } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "./ThemeContext";
 import { fontFamily } from "@/theme/typography";
 
 export interface AlertAction {
@@ -32,6 +33,8 @@ const AlertContext = createContext<AlertContextValue | null>(null);
  */
 export function AlertProvider({ children }: PropsWithChildren) {
   const [options, setOptions] = useState<AlertOptions | null>(null);
+  const colors = useColors();
+  const styles = makeStyles(colors);
 
   const show = useCallback((opts: AlertOptions) => setOptions(opts), []);
   const close = useCallback(() => setOptions(null), []);
@@ -88,34 +91,36 @@ export function useAlert(): (options: AlertOptions) => void {
   return ctx.show;
 }
 
-const styles = StyleSheet.create({
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.scrim },
-  sheetWrap: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-  },
-  sheet: {
-    width: "100%",
-    maxWidth: 340,
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    padding: 22,
-  },
-  title: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary, marginBottom: 6 },
-  message: { fontFamily: fontFamily.sansRegular, fontSize: 13.5, lineHeight: 20, color: colors.textSecondary },
-  actions: { marginTop: 20, gap: 8 },
-  actionButton: {
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: colors.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionButtonCancel: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
-  actionPressed: { opacity: 0.85 },
-  actionLabel: { fontFamily: fontFamily.sansBold, fontSize: 14.5, color: colors.white },
-  actionLabelDestructive: { color: "#FF9B90" },
-  actionLabelCancel: { color: colors.textSecondary },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.scrim },
+    sheetWrap: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 32,
+    },
+    sheet: {
+      width: "100%",
+      maxWidth: 340,
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      padding: 22,
+    },
+    title: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary, marginBottom: 6 },
+    message: { fontFamily: fontFamily.sansRegular, fontSize: 13.5, lineHeight: 20, color: colors.textSecondary },
+    actions: { marginTop: 20, gap: 8 },
+    actionButton: {
+      height: 46,
+      borderRadius: 12,
+      backgroundColor: colors.navy,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionButtonCancel: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+    actionPressed: { opacity: 0.85 },
+    actionLabel: { fontFamily: fontFamily.sansBold, fontSize: 14.5, color: colors.white },
+    actionLabelDestructive: { color: "#FF9B90" },
+    actionLabelCancel: { color: colors.textSecondary },
+  });
+}

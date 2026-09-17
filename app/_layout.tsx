@@ -6,9 +6,9 @@ import { StatusBar } from "expo-status-bar";
 import { Platform, View } from "react-native";
 import { Analytics } from "@vercel/analytics/react";
 import { fontsToLoad } from "@/theme/typography";
-import { colors } from "@/theme/colors";
 import { AppLockProvider, useAppLockContext } from "@/context/AppLockContext";
 import { AlertProvider } from "@/context/AlertContext";
+import { ThemeProvider, useColors, useTheme } from "@/context/ThemeContext";
 import { LockScreen } from "@/components/LockScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { loadSavedTranslation } from "@/data/bible";
@@ -21,6 +21,8 @@ loadSavedTranslation();
  * shared AppLockProvider via context. */
 function Gate() {
   const { loading, enabled, locked, unlock } = useAppLockContext();
+  const colors = useColors();
+  const { scheme } = useTheme();
 
   if (loading) {
     return <View style={{ flex: 1, backgroundColor: colors.navy }} />;
@@ -32,7 +34,7 @@ function Gate() {
   // instead of returning them to where they were.
   return (
     <>
-      <StatusBar style={enabled && locked ? "light" : "dark"} />
+      <StatusBar style={enabled && locked ? "light" : scheme === "dark" ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="note/[id]" options={{ presentation: "card" }} />
@@ -43,8 +45,9 @@ function Gate() {
   );
 }
 
-export default function RootLayout() {
+function RootLayoutInner() {
   const [fontsLoaded, fontError] = useFonts(fontsToLoad);
+  const colors = useColors();
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -68,5 +71,13 @@ export default function RootLayout() {
           APIs that don't exist on native. */}
       {Platform.OS === "web" ? <Analytics /> : null}
     </ErrorBoundary>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutInner />
+    </ThemeProvider>
   );
 }

@@ -1,12 +1,37 @@
 import React, { Component, type ErrorInfo, type PropsWithChildren } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { OpenBookIcon } from "./icons";
 
 interface State {
   error: Error | null;
+}
+
+/** The crash screen's actual UI — split out as a function component so it
+ * can read the live theme via `useColors()`; the boundary itself must stay
+ * a class component (React has no hook equivalent for componentDidCatch),
+ * which can't call hooks directly. */
+function ErrorFallback({ onReset }: { onReset: () => void }) {
+  const colors = useColors();
+  const styles = makeStyles(colors);
+  return (
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.content}>
+        <OpenBookIcon size={32} color={colors.gold} />
+        <Text style={styles.title}>Something went wrong</Text>
+        <Text style={styles.message}>
+          Amani hit an unexpected error. Your notes are safe on this device — try again, and if it
+          keeps happening, reopening the app usually clears it.
+        </Text>
+        <Pressable style={styles.button} onPress={onReset}>
+          <Text style={styles.buttonText}>Try again</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
 }
 
 /**
@@ -33,39 +58,33 @@ export class ErrorBoundary extends Component<PropsWithChildren, State> {
 
   render() {
     if (this.state.error) {
-      return (
-        <SafeAreaView style={styles.screen}>
-          <View style={styles.content}>
-            <OpenBookIcon size={32} color={colors.gold} />
-            <Text style={styles.title}>Something went wrong</Text>
-            <Text style={styles.message}>
-              Amani hit an unexpected error. Your notes are safe on this device — try again, and if
-              it keeps happening, reopening the app usually clears it.
-            </Text>
-            <Pressable style={styles.button} onPress={this.reset}>
-              <Text style={styles.buttonText}>Try again</Text>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      );
+      return <ErrorFallback onReset={this.reset} />;
     }
     return this.props.children;
   }
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 12 },
-  title: { fontFamily: fontFamily.serifBold, fontSize: 19, color: colors.textPrimary, marginTop: 4 },
-  message: { fontFamily: fontFamily.sansRegular, fontSize: 13.5, lineHeight: 20, color: colors.textSecondary, textAlign: "center" },
-  button: {
-    marginTop: 8,
-    height: 46,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: colors.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: { fontFamily: fontFamily.sansBold, fontSize: 14, color: colors.white },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    content: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 12 },
+    title: { fontFamily: fontFamily.serifBold, fontSize: 19, color: colors.textPrimary, marginTop: 4 },
+    message: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 13.5,
+      lineHeight: 20,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    button: {
+      marginTop: 8,
+      height: 46,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      backgroundColor: colors.navy,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    buttonText: { fontFamily: fontFamily.sansBold, fontSize: 14, color: colors.white },
+  });
+}

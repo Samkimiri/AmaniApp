@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { colors } from "@/theme/colors";
-import { fontFamily, textStyles } from "@/theme/typography";
+import { ColorPalette } from "@/theme/colors";
+import { useColors, useTextStyles } from "@/context/ThemeContext";
+import { fontFamily } from "@/theme/typography";
 import { SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, PlusIcon } from "@/components/icons";
 import {
   AVAILABLE_TRANSLATIONS,
@@ -42,6 +43,9 @@ export default function BibleScreen() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const translationCode = useActiveTranslation();
   const [switchingTranslation, setSwitchingTranslation] = useState(false);
+  const colors = useColors();
+  const textStyles = useTextStyles();
+  const styles = makeStyles(colors);
 
   async function switchTranslation() {
     const idx = AVAILABLE_TRANSLATIONS.findIndex((t) => t.code === translationCode);
@@ -292,7 +296,8 @@ export default function BibleScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingHorizontal: 24,
@@ -377,4 +382,5 @@ const styles = StyleSheet.create({
   },
   resultRef: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.navy, marginBottom: 2 },
   resultText: { fontFamily: fontFamily.sansRegular, fontSize: 13, color: colors.textSecondary },
-});
+  });
+}

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { LockIcon } from "./icons";
 import { PinPad } from "./PinPad";
@@ -20,6 +21,8 @@ export function AppLockSection() {
   const [step, setStep] = useState<Step | null>(null);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const colors = useColors();
+  const styles = makeStyles(colors);
 
   function closeModal() {
     setStep(null);
@@ -171,64 +174,66 @@ export function AppLockSection() {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    width: "100%",
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    padding: 16,
-    marginTop: 16,
-  },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.verseBg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
-  rowSubtitle: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 2 },
-  divider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 14 },
-  label: {
-    fontFamily: fontFamily.sansExtraBold,
-    fontSize: 10.5,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    color: colors.textFaint,
-    marginBottom: 8,
-  },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
-  chipText: { fontFamily: fontFamily.sansSemibold, fontSize: 12, color: colors.textSecondary },
-  chipTextActive: { color: colors.white },
-  actionsRow: { flexDirection: "row", gap: 20, marginTop: 16 },
-  textButton: { paddingVertical: 4 },
-  textButtonLabel: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.gold },
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    card: {
+      width: "100%",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      padding: 16,
+      marginTop: 16,
+    },
+    headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    iconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: colors.verseBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
+    rowSubtitle: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    divider: { height: 1, backgroundColor: colors.borderLight, marginVertical: 14 },
+    label: {
+      fontFamily: fontFamily.sansExtraBold,
+      fontSize: 10.5,
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+      color: colors.textFaint,
+      marginBottom: 8,
+    },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    chip: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      height: 34,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+    chipText: { fontFamily: fontFamily.sansSemibold, fontSize: 12, color: colors.textSecondary },
+    chipTextActive: { color: colors.white },
+    actionsRow: { flexDirection: "row", gap: 20, marginTop: 16 },
+    textButton: { paddingVertical: 4 },
+    textButtonLabel: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.gold },
 
-  scrim: { flex: 1, backgroundColor: colors.scrim, alignItems: "center", justifyContent: "center" },
-  sheet: {
-    width: 320,
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    alignItems: "center",
-  },
-  sheetTitle: { fontFamily: fontFamily.serifBold, fontSize: 18, color: colors.textPrimary, marginBottom: 4 },
-  sheetSubtitle: { fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: colors.textMuted, marginBottom: 24 },
-  cancelButton: { marginTop: 20 },
-  cancelText: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.textMuted },
-});
+    scrim: { flex: 1, backgroundColor: colors.scrim, alignItems: "center", justifyContent: "center" },
+    sheet: {
+      width: 320,
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      paddingVertical: 28,
+      paddingHorizontal: 20,
+      alignItems: "center",
+    },
+    sheetTitle: { fontFamily: fontFamily.serifBold, fontSize: 18, color: colors.textPrimary, marginBottom: 4 },
+    sheetSubtitle: { fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: colors.textMuted, marginBottom: 24 },
+    cancelButton: { marginTop: 20 },
+    cancelText: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.textMuted },
+  });
+}

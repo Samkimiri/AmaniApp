@@ -17,7 +17,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Audio, type AVPlaybackStatus } from "expo-av";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import {
   CameraIcon,
@@ -74,6 +75,8 @@ export default function NoteEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === "new";
   const translationCode = useActiveTranslation();
+  const colors = useColors();
+  const styles = makeStyles(colors);
   const [note, setNote] = useState<SermonNote>(() => emptyNote(isNew ? newId() : id));
   const [loaded, setLoaded] = useState(isNew);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
@@ -882,7 +885,8 @@ export default function NoteEditorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
@@ -1040,4 +1044,5 @@ const styles = StyleSheet.create({
   savedRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   savedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
   savedText: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },
-});
+  });
+}

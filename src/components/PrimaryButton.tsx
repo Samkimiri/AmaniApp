@@ -1,6 +1,7 @@
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 
 export function PrimaryButton({
@@ -14,6 +15,8 @@ export function PrimaryButton({
   icon?: React.ReactNode;
   style?: ViewStyle;
 }) {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   return (
     <Pressable
       onPress={onPress}
@@ -27,7 +30,8 @@ export function PrimaryButton({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
   button: {
     width: "100%",
     height: 64,
@@ -64,4 +68,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.white,
   },
-});
+  });
+}

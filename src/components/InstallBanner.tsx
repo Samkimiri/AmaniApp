@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { ChevronRightIcon, DownloadIcon } from "./icons";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
@@ -10,6 +11,8 @@ import { useInstallPrompt } from "@/hooks/useInstallPrompt";
  * install (see useInstallPrompt). */
 export function InstallBanner() {
   const { available, promptInstall } = useInstallPrompt();
+  const colors = useColors();
+  const styles = makeStyles(colors);
   if (!available) return null;
 
   return (
@@ -26,27 +29,29 @@ export function InstallBanner() {
   );
 }
 
-const styles = StyleSheet.create({
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: colors.verseBg,
-    borderWidth: 1,
-    borderColor: "#F0E1BC",
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 16,
-  },
-  pressed: { opacity: 0.85 },
-  iconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: colors.card,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.verseText },
-  subtitle: { fontFamily: fontFamily.sansRegular, fontSize: 11.5, color: "#9A7B3D", marginTop: 1 },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    banner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: colors.verseBg,
+      borderWidth: 1,
+      borderColor: "#F0E1BC",
+      borderRadius: 14,
+      padding: 14,
+      marginTop: 16,
+    },
+    pressed: { opacity: 0.85 },
+    iconWrap: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: colors.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    title: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.verseText },
+    subtitle: { fontFamily: fontFamily.sansRegular, fontSize: 11.5, color: "#9A7B3D", marginTop: 1 },
+  });
+}

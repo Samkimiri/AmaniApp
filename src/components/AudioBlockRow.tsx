@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { PauseIcon, PlayIcon, WaveformIcon } from "./icons";
 import { formatDuration } from "@/types/note";
@@ -15,6 +16,8 @@ export function AudioBlockRow({
   isPlaying: boolean;
   onToggle: () => void;
 }) {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   return (
     <View style={styles.wrap}>
       <Pressable
@@ -33,26 +36,28 @@ export function AudioBlockRow({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  playButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  duration: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.textPrimary },
-  label: { fontFamily: fontFamily.sansMedium, fontSize: 12, color: colors.textMuted, marginLeft: "auto" },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    wrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    playButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.navy,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    duration: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.textPrimary },
+    label: { fontFamily: fontFamily.sansMedium, fontSize: 12, color: colors.textMuted, marginLeft: "auto" },
+  });
+}

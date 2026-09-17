@@ -4,7 +4,8 @@ import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as Clipboard from "expo-clipboard";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import {
   ChevronDownIcon,
@@ -78,6 +79,8 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
   const shotRef = useRef<ViewShot>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const showAlert = useAlert();
+  const colors = useColors();
+  const styles = makeStyles(colors);
 
   const verseOptions = useMemo(() => verseOptionsFor(note), [note]);
   const [selectedVerseId, setSelectedVerseId] = useState<string | undefined>(verseOptions[0]?.block.id);
@@ -315,6 +318,8 @@ function Row({
   last?: boolean;
   destructive?: boolean;
 }) {
+  const colors = useColors();
+  const styles = makeStyles(colors);
   return (
     <Pressable
       onPress={onPress}
@@ -332,7 +337,8 @@ function Row({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
   scrim: { flex: 1, backgroundColor: colors.scrim },
   sheet: {
     backgroundColor: colors.white,
@@ -400,4 +406,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     paddingVertical: 10,
   },
-});
+  });
+}

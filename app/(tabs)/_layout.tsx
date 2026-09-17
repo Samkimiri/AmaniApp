@@ -1,7 +1,8 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "@/theme/colors";
+import { ColorPalette } from "@/theme/colors";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { HomeIcon, NotesIcon, OpenBookIcon, UserIcon } from "@/components/icons";
 
@@ -9,10 +10,14 @@ function TabIcon({
   focused,
   label,
   render,
+  colors,
+  styles,
 }: {
   focused: boolean;
   label: string;
   render: (color: string) => React.ReactNode;
+  colors: ColorPalette;
+  styles: ReturnType<typeof makeStyles>;
 }) {
   const color = focused ? colors.navy : colors.textFaint;
   return (
@@ -27,6 +32,9 @@ function TabIcon({
 }
 
 export default function TabsLayout() {
+  const colors = useColors();
+  const styles = makeStyles(colors);
+
   return (
     <Tabs
       screenOptions={{
@@ -41,7 +49,13 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Home" render={(c) => <HomeIcon size={22} color={c} />} />
+            <TabIcon
+              focused={focused}
+              label="Home"
+              render={(c) => <HomeIcon size={22} color={c} />}
+              colors={colors}
+              styles={styles}
+            />
           ),
         }}
       />
@@ -50,7 +64,13 @@ export default function TabsLayout() {
         options={{
           title: "Notes",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Notes" render={(c) => <NotesIcon size={22} color={c} />} />
+            <TabIcon
+              focused={focused}
+              label="Notes"
+              render={(c) => <NotesIcon size={22} color={c} />}
+              colors={colors}
+              styles={styles}
+            />
           ),
         }}
       />
@@ -59,7 +79,13 @@ export default function TabsLayout() {
         options={{
           title: "Bible",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Bible" render={(c) => <OpenBookIcon size={22} color={c} />} />
+            <TabIcon
+              focused={focused}
+              label="Bible"
+              render={(c) => <OpenBookIcon size={22} color={c} />}
+              colors={colors}
+              styles={styles}
+            />
           ),
         }}
       />
@@ -68,7 +94,13 @@ export default function TabsLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Profile" render={(c) => <UserIcon size={22} color={c} />} />
+            <TabIcon
+              focused={focused}
+              label="Profile"
+              render={(c) => <UserIcon size={22} color={c} />}
+              colors={colors}
+              styles={styles}
+            />
           ),
         }}
       />
@@ -76,29 +108,31 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: colors.card,
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    height: 84,
-    paddingTop: 6,
-  },
-  tabItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    minHeight: 44,
-  },
-  tabLabel: {
-    fontSize: 10.5,
-  },
-  dot: {
-    position: "absolute",
-    bottom: -8,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.gold,
-  },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    tabBar: {
+      backgroundColor: colors.card,
+      borderTopColor: colors.border,
+      borderTopWidth: 1,
+      height: 84,
+      paddingTop: 6,
+    },
+    tabItem: {
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      minHeight: 44,
+    },
+    tabLabel: {
+      fontSize: 10.5,
+    },
+    dot: {
+      position: "absolute",
+      bottom: -8,
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.gold,
+    },
+  });
+}

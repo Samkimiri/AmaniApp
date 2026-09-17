@@ -11,7 +11,7 @@
  *
  * Fonts are loaded in app/_layout.tsx via @expo-google-fonts packages.
  */
-import { colors } from "./colors";
+import { ColorPalette, colors } from "./colors";
 
 export const fontFamily = {
   serifRegular: "Newsreader_500Medium",
@@ -37,56 +37,64 @@ export const fontsToLoad = {
   PlusJakartaSans_800ExtraBold: require("@expo-google-fonts/plus-jakarta-sans/PlusJakartaSans_800ExtraBold.ttf"),
 };
 
-export const textStyles = {
-  displayTitle: {
-    fontFamily: fontFamily.serifSemibold,
-    fontSize: 25,
-    color: colors.textPrimary,
-  },
-  screenTitle: {
-    fontFamily: fontFamily.serifBold,
-    fontSize: 22,
-    color: colors.textPrimary,
-  },
-  noteTitle: {
-    fontFamily: fontFamily.serifBold,
-    fontSize: 22,
-    color: colors.textPrimary,
-    lineHeight: 29,
-  },
-  verseText: {
-    fontFamily: fontFamily.serifItalic,
-    fontSize: 15.5,
-    color: colors.verseText,
-    lineHeight: 24,
-  },
-  verseTextLarge: {
-    fontFamily: fontFamily.serifRegular,
-    fontSize: 22,
-    color: colors.textPrimary,
-    lineHeight: 35,
-  },
-  body: {
-    fontFamily: fontFamily.sansRegular,
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 26,
-  },
-  label: {
-    fontFamily: fontFamily.sansBold,
-    fontSize: 12,
-    letterSpacing: 0.6,
-    textTransform: "uppercase" as const,
-    color: colors.textFaint,
-  },
-  caption: {
-    fontFamily: fontFamily.sansMedium,
-    fontSize: 12.5,
-    color: colors.textMuted,
-  },
-  button: {
-    fontFamily: fontFamily.sansBold,
-    fontSize: 16,
-    color: colors.white,
-  },
-} as const;
+/** Text styles that carry a theme-dependent color. Call with the active
+ * palette (`useColors()`) — `textStyles` below is a light-mode default
+ * kept for any leftover static usage, but every screen should prefer
+ * `useTextStyles()` so these actually change color in dark mode. */
+export function makeTextStyles(colors: ColorPalette) {
+  return {
+    displayTitle: {
+      fontFamily: fontFamily.serifSemibold,
+      fontSize: 25,
+      color: colors.textPrimary,
+    },
+    screenTitle: {
+      fontFamily: fontFamily.serifBold,
+      fontSize: 22,
+      color: colors.textPrimary,
+    },
+    noteTitle: {
+      fontFamily: fontFamily.serifBold,
+      fontSize: 22,
+      color: colors.textPrimary,
+      lineHeight: 29,
+    },
+    verseText: {
+      fontFamily: fontFamily.serifItalic,
+      fontSize: 15.5,
+      color: colors.verseText,
+      lineHeight: 24,
+    },
+    verseTextLarge: {
+      fontFamily: fontFamily.serifRegular,
+      fontSize: 22,
+      color: colors.textPrimary,
+      lineHeight: 35,
+    },
+    body: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 15,
+      color: colors.textSecondary,
+      lineHeight: 26,
+    },
+    label: {
+      fontFamily: fontFamily.sansBold,
+      fontSize: 12,
+      letterSpacing: 0.6,
+      textTransform: "uppercase" as const,
+      color: colors.textFaint,
+    },
+    caption: {
+      fontFamily: fontFamily.sansMedium,
+      fontSize: 12.5,
+      color: colors.textMuted,
+    },
+    button: {
+      fontFamily: fontFamily.sansBold,
+      fontSize: 16,
+      color: colors.white,
+    },
+  } as const;
+}
+
+export const textStyles = makeTextStyles(colors);

@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "@/theme/colors";
-import { fontFamily, textStyles } from "@/theme/typography";
-import { ChevronRightIcon, DocumentIcon, OpenBookIcon, UserIcon } from "@/components/icons";
+import { ColorPalette } from "@/theme/colors";
+import { useColors, useTextStyles, useTheme, type ThemeMode } from "@/context/ThemeContext";
+import { fontFamily } from "@/theme/typography";
+import { ChevronRightIcon, DocumentIcon, MoonIcon, OpenBookIcon, UserIcon } from "@/components/icons";
 import { AppLockSection } from "@/components/AppLockSection";
 import { BackupSection } from "@/components/BackupSection";
 import {
@@ -15,9 +16,19 @@ import {
   useActiveTranslation,
 } from "@/data/bible";
 
+const THEME_OPTIONS: { mode: ThemeMode; label: string }[] = [
+  { mode: "light", label: "Light" },
+  { mode: "dark", label: "Dark" },
+  { mode: "system", label: "System" },
+];
+
 export default function ProfileScreen() {
   const translationCode = useActiveTranslation(); // subscribes so this screen re-renders when the Bible tab switches translations
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const colors = useColors();
+  const textStyles = useTextStyles();
+  const { mode, setMode } = useTheme();
+  const styles = makeStyles(colors);
 
   async function chooseTranslation(code: TranslationCode) {
     if (code === translationCode) return;
@@ -41,6 +52,31 @@ export default function ProfileScreen() {
           Amani doesn't require an account and works fully offline — your notes and the whole
           Bible stay on this device, no connection needed.
         </Text>
+
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <MoonIcon size={18} color={colors.navy} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>Appearance</Text>
+              <Text style={styles.rowSubtitle}>Choose light, dark, or match your device</Text>
+            </View>
+          </View>
+          <View style={styles.translationChipRow}>
+            {THEME_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.mode}
+                style={[styles.translationChip, mode === opt.mode && styles.translationChipActive]}
+                onPress={() => setMode(opt.mode)}
+                accessibilityRole="button"
+                accessibilityLabel={`${opt.label} appearance`}
+              >
+                <Text style={[styles.translationChipText, mode === opt.mode && styles.translationChipTextActive]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
 
         <View style={styles.card}>
           <View style={styles.row}>
@@ -94,74 +130,76 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
-  content: { paddingHorizontal: 24, alignItems: "center" },
-  avatarLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#EFE7D8",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-  },
-  name: { fontFamily: fontFamily.serifSemibold, fontSize: 18, color: colors.textPrimary, marginTop: 14 },
-  subtitle: {
-    fontFamily: fontFamily.sansRegular,
-    fontSize: 13.5,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: 6,
-    lineHeight: 20,
-    paddingHorizontal: 8,
-  },
-  card: {
-    width: "100%",
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    padding: 16,
-    marginTop: 26,
-  },
-  row: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
-  rowSubtitle: { fontFamily: fontFamily.sansRegular, fontSize: 12.5, color: colors.textMuted, marginTop: 2 },
-  translationChipRow: { flexDirection: "row", gap: 8, marginTop: 14 },
-  translationChip: {
-    height: 34,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  translationChipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
-  translationChipText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.textSecondary },
-  translationChipTextActive: { color: colors.white },
-  linkRow: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-  },
-  linkRowText: { flex: 1, fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
-  footnote: {
-    fontFamily: fontFamily.sansRegular,
-    fontSize: 11.5,
-    color: colors.textFaint,
-    textAlign: "center",
-    marginTop: 28,
-    lineHeight: 17,
-  },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
+    content: { paddingHorizontal: 24, alignItems: "center" },
+    avatarLarge: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: "#EFE7D8",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 12,
+    },
+    name: { fontFamily: fontFamily.serifSemibold, fontSize: 18, color: colors.textPrimary, marginTop: 14 },
+    subtitle: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 13.5,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: 6,
+      lineHeight: 20,
+      paddingHorizontal: 8,
+    },
+    card: {
+      width: "100%",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      padding: 16,
+      marginTop: 26,
+    },
+    row: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+    rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
+    rowSubtitle: { fontFamily: fontFamily.sansRegular, fontSize: 12.5, color: colors.textMuted, marginTop: 2 },
+    translationChipRow: { flexDirection: "row", gap: 8, marginTop: 14 },
+    translationChip: {
+      height: 34,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    translationChipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+    translationChipText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.textSecondary },
+    translationChipTextActive: { color: colors.white },
+    linkRow: {
+      width: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginTop: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+    },
+    linkRowText: { flex: 1, fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
+    footnote: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 11.5,
+      color: colors.textFaint,
+      textAlign: "center",
+      marginTop: 28,
+      lineHeight: 17,
+    },
+  });
+}

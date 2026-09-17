@@ -3,8 +3,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
-import { colors } from "@/theme/colors";
-import { fontFamily, textStyles } from "@/theme/typography";
+import { ColorPalette } from "@/theme/colors";
+import { useColors, useTextStyles } from "@/context/ThemeContext";
+import { fontFamily } from "@/theme/typography";
 import { OpenBookIcon, PlusIcon, NotesIcon, UserIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { NoteCard } from "@/components/NoteCard";
@@ -34,6 +35,9 @@ export default function HomeScreen() {
     month: "long",
     day: "numeric",
   });
+  const colors = useColors();
+  const textStyles = useTextStyles();
+  const styles = makeStyles(colors);
 
   const shotRef = useRef<ViewShot>(null);
   const [sharingVerse, setSharingVerse] = useState(false);
@@ -131,42 +135,44 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, paddingBottom: 40 },
-  offscreen: { position: "absolute", top: 0, left: -9999, width: VERSE_CARD_WIDTH, height: VERSE_CARD_HEIGHT },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  brand: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandText: { fontFamily: fontFamily.serifBold, fontSize: 21, color: colors.navy },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#EFE7D8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  date: { fontFamily: fontFamily.sansMedium, fontSize: 13, color: colors.textMuted, marginBottom: 2 },
-  emptyCard: {
-    marginTop: 10,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 18,
-  },
-  emptyText: { fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textSecondary, lineHeight: 20 },
-  tileRow: { flexDirection: "row", gap: 14, marginTop: 18 },
-  tile: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-  },
-  tilePressed: { opacity: 0.7 },
-  tileTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
-  tileSubtitle: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },
-});
+function makeStyles(colors: ColorPalette) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    content: { padding: 24, paddingBottom: 40 },
+    offscreen: { position: "absolute", top: 0, left: -9999, width: VERSE_CARD_WIDTH, height: VERSE_CARD_HEIGHT },
+    header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+    brandText: { fontFamily: fontFamily.serifBold, fontSize: 21, color: colors.navy },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: "#EFE7D8",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    date: { fontFamily: fontFamily.sansMedium, fontSize: 13, color: colors.textMuted, marginBottom: 2 },
+    emptyCard: {
+      marginTop: 10,
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 18,
+    },
+    emptyText: { fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textSecondary, lineHeight: 20 },
+    tileRow: { flexDirection: "row", gap: 14, marginTop: 18 },
+    tile: {
+      flex: 1,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      padding: 16,
+      gap: 10,
+    },
+    tilePressed: { opacity: 0.7 },
+    tileTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
+    tileSubtitle: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },
+  });
+}

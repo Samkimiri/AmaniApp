@@ -6,7 +6,12 @@ import { OpenBookIcon, ShareArrowIcon } from "./icons";
 import { VerseResult } from "@/data/bible";
 
 /** A daily-scripture card for the Home screen — the first thing a user
- * sees each time they open Amani, reinforcing the app's purpose. */
+ * sees each time they open Amani, reinforcing the app's purpose.
+ *
+ * Deliberately keeps the fixed navy/gold brand look in both light and
+ * dark mode (like VerseImageCard, the shareable graphic it mirrors)
+ * rather than following the active theme — it's meant to read as one
+ * consistent branded card, not a themed surface. */
 export function VerseOfTheDayCard({
   verse,
   onShare,
