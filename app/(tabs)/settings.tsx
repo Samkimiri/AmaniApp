@@ -8,6 +8,7 @@ import { fontFamily } from "@/theme/typography";
 import { ChevronRightIcon, DocumentIcon, MoonIcon, OpenBookIcon, UserIcon } from "@/components/icons";
 import { AppLockSection } from "@/components/AppLockSection";
 import { BackupSection } from "@/components/BackupSection";
+import { GoogleDriveSection } from "@/components/GoogleDriveSection";
 import {
   AVAILABLE_TRANSLATIONS,
   setActiveTranslation,
@@ -112,6 +113,7 @@ export default function SettingsScreen() {
 
         <AppLockSection />
         <BackupSection />
+        <GoogleDriveSection />
 
         <Pressable style={styles.linkRow} onPress={() => router.push("/legal")}>
           <DocumentIcon size={16} color={colors.textSecondary} />

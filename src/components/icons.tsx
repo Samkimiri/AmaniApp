@@ -205,6 +205,14 @@ export function ImageCardIcon({ size = 20, color = "#8A5A00", strokeWidth = 1.8 
   );
 }
 
+export function CloudIcon({ size = 20, color = "#1F3A5F", strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M7 18h10.5a3.5 3.5 0 0 0 .5-6.96A5.5 5.5 0 0 0 7.6 9.02 4 4 0 0 0 7 18Z" />
+    </Svg>
+  );
+}
+
 export function DocumentIcon({ size = 20, color = "#1F3A5F", strokeWidth = 1.8 }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>

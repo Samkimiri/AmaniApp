@@ -42,16 +42,28 @@ export default function LegalScreen() {
         <Text style={styles.h1}>Privacy policy</Text>
 
         <Text style={styles.p}>
-          Amani doesn't have accounts, doesn't have a server, and doesn't send anything you write,
-          photograph, or record to us or anyone else. Everything you create in Amani — sermon
-          notes, photos, and audio recordings — is stored only on the device or browser you're
-          using it in.
+          Amani doesn't have accounts and doesn't have a server of its own — Amani itself never
+          receives anything you write, photograph, or record. By default, everything you create —
+          sermon notes, photos, and audio recordings — is stored only on the device or browser
+          you're using it in. The one optional exception is Google Drive backup, described below,
+          which you have to deliberately turn on.
+        </Text>
+
+        <Text style={styles.h2}>Google Drive backup (optional)</Text>
+        <Text style={styles.p}>
+          If you choose to connect Google Drive in Settings, your notes are backed up to a
+          private, hidden area of your own Google Drive — not visible in your regular Drive files,
+          and not visible to Amani's developer, or anyone else. This only happens if you sign in
+          and tap "Back up now" or "Restore"; it's never automatic. Amani only ever requests
+          access to that one hidden app-data area, never your other Drive files. Signing in goes
+          directly through Google — Amani never sees or stores your Google password.
         </Text>
 
         <Text style={styles.h2}>What Amani accesses, and why</Text>
         <Bullet styles={styles} title="Camera and photo library">
           Only when you choose to attach a picture to a note. The photo is saved on your device as
-          part of that note; Amani never uploads it anywhere.
+          part of that note; Amani never uploads it anywhere unless you've turned on Google Drive
+          backup.
         </Bullet>
         <Bullet styles={styles} title="Microphone">
           Only when you tap the record button to attach sermon audio to a note. The recording is
@@ -69,11 +81,12 @@ export default function LegalScreen() {
 
         <Text style={styles.h2}>What we don't do</Text>
         <Text style={styles.p}>
-          We don't collect your name, email, or any personal information — there's nothing to
-          collect, since there's no account. We don't sell or share data, because none is gathered
-          in the first place. If a future version adds anonymous, aggregate usage analytics (for
-          example, to see which screens are used), this page will say so specifically before that
-          ships — it will never include the content of your notes.
+          Amani itself has no accounts and collects no name, email, or personal information — the
+          only sign-in involved is Google's own, and only if you turn on Drive backup, which
+          Amani never sees your password for. We don't sell or share data, because none is
+          gathered in the first place. If a future version adds anonymous, aggregate usage
+          analytics (for example, to see which screens are used), this page will say so
+          specifically before that ships — it will never include the content of your notes.
         </Text>
 
         <Text style={styles.h2}>Your data is only as safe as this device</Text>

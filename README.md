@@ -67,6 +67,33 @@ simulator, or `w` for a browser. Requires Node 18+.
 npm run typecheck   # TypeScript, no emit
 ```
 
+### Setting up Google Drive backup
+
+Settings → Google Drive backup lets someone sign in with their own Google
+account and back up their notes to a private, hidden area of their own
+Drive (the `drive.appdata` scope — Amani can never see or touch anything
+else in their Drive). This is off by default and needs one-time setup
+before it'll actually connect:
+
+1. Create a project at [console.cloud.google.com](https://console.cloud.google.com).
+2. **APIs & Services → Library** → enable **Google Drive API**.
+3. **APIs & Services → OAuth consent screen** → External → add the
+   `.../auth/drive.appdata` scope.
+4. **APIs & Services → Credentials → Create Credentials → OAuth client
+   ID** → Application type **Web application**. Add your deployed URL
+   (and `http://localhost:8081` for local testing) to both **Authorized
+   JavaScript origins** and **Authorized redirect URIs**.
+5. Copy the generated Client ID into `GOOGLE_CLIENT_ID` at the top of
+   `src/components/GoogleDriveSection.tsx`.
+
+Until that's a real client ID, the "Connect Google Drive" button tells
+the user this feature isn't set up yet rather than failing confusingly.
+
+While the OAuth consent screen is in "Testing" mode (Google's default),
+only Google accounts explicitly added as test users can sign in — move
+it to "Production" (which needs Google's review, since `drive.appdata`
+is a sensitive scope) before relying on this for real users.
+
 ## Project layout
 
 ```
