@@ -186,14 +186,19 @@ function escapeHtml(input: string): string {
 
 /**
  * A tiny, deliberately minimal Markdown renderer for the note editor's
- * lightweight rich text: **bold**, *italic*, and "- " bullet lines. Not a
- * general Markdown implementation — just the handful of markers the
- * editor's formatting toolbar actually inserts. Escapes HTML first, then
- * applies formatting to the now-safe text, so no user-typed text can
- * break out of the tags this generates.
+ * lightweight rich text: **bold**, *italic*, ==highlight==, and "- "
+ * bullet lines. Not a general Markdown implementation — just the handful
+ * of markers the editor's formatting toolbar actually inserts. Escapes
+ * HTML first, then applies formatting to the now-safe text, so no
+ * user-typed text can break out of the tags this generates.
  */
 function renderMarkdownLite(text: string): string {
+  const highlight = getHighlightColor("gold");
   const escaped = escapeHtml(text)
+    .replace(
+      /==(.+?)==/g,
+      `<mark style="background:${highlight.background};color:${highlight.text};padding:0 2px;border-radius:2px;">$1</mark>`
+    )
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
 

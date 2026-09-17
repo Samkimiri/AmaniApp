@@ -90,6 +90,36 @@ export const darkColors: ColorPalette = {
   scrim: "rgba(0,0,0,0.6)",
 };
 
+/** A warm, sepia-toned palette modeled on a printed page — for
+ * long stretches of reading (the Bible tab, a long note) rather than
+ * quick glances at a bright screen. This is the app's default theme;
+ * Light/Dark/System are still available in Settings → Appearance. */
+export const readingColors: ColorPalette = {
+  navy: "#5A4326",
+  navyDark: "#463319",
+  gold: "#9C6B1F",
+  goldLight: "#B98A3A",
+
+  background: "#F4ECD8",
+  card: "#FAF3E4",
+  border: "#E2D5B8",
+  borderLight: "#EBE0C8",
+
+  textPrimary: "#3B2F1E",
+  textSecondary: "#5C4A32",
+  textMuted: "#8A7857",
+  textFaint: "#A6976F",
+
+  verseBg: "#EDE0BE",
+  verseText: "#6B4A15",
+
+  success: "#4B7A4A",
+  danger: "#A6412C",
+
+  white: "#FFFFFF",
+  scrim: "rgba(59,47,30,0.42)",
+};
+
 /** Static light-mode default — kept for any spot that genuinely can't
  * reach the theme context (e.g. code that runs before React mounts).
  * Everything else should call `useColors()` instead. */

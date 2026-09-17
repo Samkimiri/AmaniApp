@@ -17,6 +17,7 @@ import {
 } from "@/data/bible";
 
 const THEME_OPTIONS: { mode: ThemeMode; label: string }[] = [
+  { mode: "reading", label: "Reading" },
   { mode: "light", label: "Light" },
   { mode: "dark", label: "Dark" },
   { mode: "system", label: "System" },
@@ -58,7 +59,7 @@ export default function SettingsScreen() {
             <MoonIcon size={18} color={colors.navy} />
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>Appearance</Text>
-              <Text style={styles.rowSubtitle}>Choose light, dark, or match your device</Text>
+              <Text style={styles.rowSubtitle}>Reading is the default — warm and paper-like for long stretches of reading</Text>
             </View>
           </View>
           <View style={styles.translationChipRow}>
@@ -166,7 +167,7 @@ function makeStyles(colors: ColorPalette) {
     row: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
     rowSubtitle: { fontFamily: fontFamily.sansRegular, fontSize: 12.5, color: colors.textMuted, marginTop: 2 },
-    translationChipRow: { flexDirection: "row", gap: 8, marginTop: 14 },
+    translationChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
     translationChip: {
       height: 34,
       paddingHorizontal: 16,

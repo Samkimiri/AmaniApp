@@ -24,6 +24,7 @@ import {
   CameraIcon,
   ChevronLeftIcon,
   HeadingIcon,
+  HighlightIcon,
   ImagePlaceholderIcon,
   MicIcon,
   OpenBookIcon,
@@ -45,6 +46,8 @@ import { notesStore } from "@/data/notesStore";
 import { persistRecording, resolvePlayableUri, resolvePlayableUriAsDataUrl } from "@/data/audioStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
 import { useAlert } from "@/context/AlertContext";
+import { useHint } from "@/hooks/useHint";
+import { HintBanner } from "@/components/HintBanner";
 
 function isBlankNote(note: SermonNote): boolean {
   return (
@@ -95,6 +98,7 @@ export default function NoteEditorScreen() {
   // flash the header/toolbar back in for a single frame in between.
   const focusExitTimer = useRef<ReturnType<typeof setTimeout>>();
   const showAlert = useAlert();
+  const { visible: blockHintVisible, dismiss: dismissBlockHint } = useHint("note-editor-block-gestures");
 
   function handleTypingFocus() {
     if (focusExitTimer.current) clearTimeout(focusExitTimer.current);
@@ -107,7 +111,7 @@ export default function NoteEditorScreen() {
 
   // Lightweight rich text: body paragraphs stay plain strings (so backup,
   // search, and plain-text sharing all keep working unchanged) but can
-  // hold Markdown-style **bold**, *italic*, and "- " bullets, applied via
+  // hold Markdown-style **bold**, *italic*, ==highlight==, and "- " bullets, applied via
   // the formatting bar and rendered properly in the PDF export.
   // `activeTextBlockId` tracks which body block the formatting buttons
   // should apply to; `selections` remembers each block's last known
@@ -116,6 +120,14 @@ export default function NoteEditorScreen() {
   // otherwise lose the selection.
   const [activeTextBlockId, setActiveTextBlockId] = useState<string | null>(null);
   const selections = useRef<Record<string, { start: number; end: number }>>({});
+  // On web, tapping any other element (a formatting button included) blurs
+  // whatever <textarea> currently has focus — standard DOM behavior, not a
+  // bug in this app, but it used to mean every tap on Bold/Italic/Bullet
+  // silently closed the keyboard and dropped out of focus mode, forcing a
+  // re-tap into the text just to keep typing. Refocusing the same input
+  // synchronously, in the same handler that applied the format, restores
+  // focus before the blur's 80ms exit timer (see handleTypingBlur) fires.
+  const textInputRefs = useRef<Record<string, TextInput | null>>({});
 
   function applyInlineFormat(blockId: string, marker: string) {
     const sel = selections.current[blockId] ?? { start: 0, end: 0 };
@@ -131,6 +143,7 @@ export default function NoteEditorScreen() {
         return { ...b, text: `${before}${marker}${middle}${marker}${after}` };
       }),
     }));
+    textInputRefs.current[blockId]?.focus();
   }
 
   function applyBullet(blockId: string) {
@@ -145,6 +158,7 @@ export default function NoteEditorScreen() {
         return { ...b, text: b.text.slice(0, lineStart) + "- " + b.text.slice(lineStart) };
       }),
     }));
+    textInputRefs.current[blockId]?.focus();
   }
 
   // On web, a multiline TextInput renders as a plain <textarea>, which the
@@ -665,6 +679,15 @@ export default function NoteEditorScreen() {
                 >
                   <Text style={styles.formatButtonText}>&bull;</Text>
                 </Pressable>
+                <Pressable
+                  onPress={() => applyInlineFormat(activeTextBlockId, "==")}
+                  style={styles.formatButton}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Highlight"
+                >
+                  <HighlightIcon size={16} color={colors.gold} />
+                </Pressable>
               </View>
             ) : (
               <View style={{ flex: 1 }} />
@@ -724,6 +747,12 @@ export default function NoteEditorScreen() {
         )}
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {blockHintVisible ? (
+            <HintBanner
+              text="Swipe left on a photo, verse, or recording to remove it. Tap a verse to change its color."
+              onDismiss={dismissBlockHint}
+            />
+          ) : null}
           <TextInput
             value={note.title}
             onChangeText={(title) => setNote((n) => ({ ...n, title }))}
@@ -767,6 +796,9 @@ export default function NoteEditorScreen() {
               return (
                 <TextInput
                   key={block.id}
+                  ref={(el) => {
+                    textInputRefs.current[block.id] = el;
+                  }}
                   value={block.text}
                   onChangeText={(text) => updateTextBlock(block.id, text)}
                   onFocus={() => {
@@ -967,7 +999,8 @@ export default function NoteEditorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Undo"
               >
-                <UndoIcon size={18} color={canUndo ? colors.textSecondary : colors.textFaint} />
+                <UndoIcon size={17} color={canUndo ? colors.textSecondary : colors.textFaint} />
+                <Text style={[styles.toolbarButtonLabel, !canUndo && styles.toolbarButtonLabelDisabled]}>Undo</Text>
               </Pressable>
               <Pressable
                 style={[styles.toolbarButton, !canRedo && styles.toolbarButtonDisabled]}
@@ -976,7 +1009,8 @@ export default function NoteEditorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Redo"
               >
-                <RedoIcon size={18} color={canRedo ? colors.textSecondary : colors.textFaint} />
+                <RedoIcon size={17} color={canRedo ? colors.textSecondary : colors.textFaint} />
+                <Text style={[styles.toolbarButtonLabel, !canRedo && styles.toolbarButtonLabelDisabled]}>Redo</Text>
               </Pressable>
               <Pressable
                 style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
@@ -984,7 +1018,10 @@ export default function NoteEditorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={recording ? "Stop recording" : "Record audio"}
               >
-                <MicIcon size={18} color={recording ? colors.white : colors.textSecondary} />
+                <MicIcon size={17} color={recording ? colors.white : colors.textSecondary} />
+                <Text style={[styles.toolbarButtonLabel, recording && styles.toolbarButtonLabelRecording]}>
+                  {recording ? "Stop" : "Record"}
+                </Text>
               </Pressable>
               <Pressable
                 style={styles.toolbarButton}
@@ -992,7 +1029,8 @@ export default function NoteEditorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Add a photo"
               >
-                <CameraIcon size={18} />
+                <CameraIcon size={17} />
+                <Text style={styles.toolbarButtonLabel}>Photo</Text>
               </Pressable>
               <Pressable
                 style={styles.toolbarButton}
@@ -1000,7 +1038,8 @@ export default function NoteEditorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Add a subheading"
               >
-                <HeadingIcon size={18} />
+                <HeadingIcon size={17} />
+                <Text style={styles.toolbarButtonLabel}>Heading</Text>
               </Pressable>
               <Pressable
                 style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
@@ -1008,7 +1047,10 @@ export default function NoteEditorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Insert a Bible verse"
               >
-                <OpenBookIcon size={18} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
+                <OpenBookIcon size={17} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
+                <Text style={[styles.toolbarButtonLabel, verseBarOpen && styles.toolbarButtonLabelActive]}>
+                  Verse
+                </Text>
               </Pressable>
               <Pressable
                 style={[styles.toolbarButton, tagBarOpen && styles.toolbarButtonActive]}
@@ -1016,7 +1058,8 @@ export default function NoteEditorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Tags"
               >
-                <TagIcon size={18} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
+                <TagIcon size={17} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
+                <Text style={[styles.toolbarButtonLabel, tagBarOpen && styles.toolbarButtonLabelActive]}>Tags</Text>
               </Pressable>
             </ScrollView>
             <View style={styles.savedRow}>
@@ -1197,16 +1240,21 @@ function makeStyles(colors: ColorPalette) {
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
-  toolbarScroll: { flexDirection: "row", alignItems: "center", gap: 14 },
+  toolbarScroll: { flexDirection: "row", alignItems: "center", gap: 10 },
   toolbarButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 58,
+    height: 50,
+    borderRadius: 14,
     backgroundColor: "#F5F2EA",
     alignItems: "center",
     justifyContent: "center",
+    gap: 3,
     flexShrink: 0,
   },
+  toolbarButtonLabel: { fontFamily: fontFamily.sansSemibold, fontSize: 9.5, color: colors.textSecondary },
+  toolbarButtonLabelActive: { color: colors.verseText },
+  toolbarButtonLabelRecording: { color: colors.white },
+  toolbarButtonLabelDisabled: { color: colors.textFaint },
   toolbarButtonActive: { backgroundColor: colors.verseBg },
   toolbarButtonRecording: { backgroundColor: "#FF6B5E" },
   toolbarButtonDisabled: { opacity: 0.4 },

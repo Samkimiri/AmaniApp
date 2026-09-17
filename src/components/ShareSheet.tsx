@@ -21,6 +21,7 @@ import { VerseImageCard, VERSE_CARD_HEIGHT, VERSE_CARD_WIDTH } from "./VerseImag
 import { shareVerseImageUri } from "@/lib/shareVerseImage";
 import { noteToHtml, noteToPlainText, SermonNote, VerseBlock } from "@/types/note";
 import { useAlert } from "@/context/AlertContext";
+import { useToast } from "@/context/ToastContext";
 
 interface ShareSheetProps {
   visible: boolean;
@@ -79,6 +80,7 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
   const shotRef = useRef<ViewShot>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const showAlert = useAlert();
+  const showToast = useToast();
   const colors = useColors();
   const styles = makeStyles(colors);
 
@@ -142,7 +144,7 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
 
   async function copyText() {
     await Clipboard.setStringAsync(noteToPlainText(note));
-    showAlert({ title: "Copied", message: "The note was copied as plain text." });
+    showToast("Copied as plain text");
   }
 
   function amaniLink() {

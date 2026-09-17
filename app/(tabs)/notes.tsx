@@ -79,7 +79,7 @@ export default function NotesScreen() {
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
         <Text style={textStyles.screenTitle}>Your notes</Text>
-        {notes.length > 0 ? <Text style={styles.hint}>Hold a note to delete it</Text> : null}
+        {notes.length > 0 ? <Text style={styles.hint}>Swipe left or hold a note to delete it</Text> : null}
       </View>
 
       {notes.length > 0 ? (

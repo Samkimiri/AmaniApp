@@ -8,6 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { fontsToLoad } from "@/theme/typography";
 import { AppLockProvider, useAppLockContext } from "@/context/AppLockContext";
 import { AlertProvider } from "@/context/AlertContext";
+import { ToastProvider } from "@/context/ToastContext";
 import { ThemeProvider, useColors, useTheme } from "@/context/ThemeContext";
 import { LockScreen } from "@/components/LockScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -62,9 +63,11 @@ function RootLayoutInner() {
   return (
     <ErrorBoundary>
       <AlertProvider>
-        <AppLockProvider>
-          <Gate />
-        </AppLockProvider>
+        <ToastProvider>
+          <AppLockProvider>
+            <Gate />
+          </AppLockProvider>
+        </ToastProvider>
       </AlertProvider>
       {/* Anonymous, aggregate page-view analytics only — no note content,
           no personal data. Web only: the underlying package assumes DOM

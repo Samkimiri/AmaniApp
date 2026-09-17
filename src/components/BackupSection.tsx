@@ -7,6 +7,7 @@ import { DocumentIcon } from "./icons";
 import { exportBackup, importBackup, pickBackupJson } from "@/data/backup";
 import { notesStore } from "@/data/notesStore";
 import { useAlert } from "@/context/AlertContext";
+import { useToast } from "@/context/ToastContext";
 
 /** Lets someone download every note (and its photos/recordings) as one
  * file, and restore from that file later — the only way to recover
@@ -15,6 +16,7 @@ import { useAlert } from "@/context/AlertContext";
 export function BackupSection() {
   const [busy, setBusy] = useState<"export" | "import" | null>(null);
   const showAlert = useAlert();
+  const showToast = useToast();
   const colors = useColors();
   const styles = makeStyles(colors);
 
@@ -44,13 +46,16 @@ export function BackupSection() {
       const json = await pickBackupJson();
       if (!json) return; // user canceled
       const { imported, failed } = await importBackup(json);
-      showAlert({
-        title: failed > 0 ? "Backup partially restored" : "Backup restored",
-        message:
-          failed > 0
-            ? `Restored ${imported} note${imported === 1 ? "" : "s"}, but ${failed} ${failed === 1 ? "was" : "were"} too damaged to read and ${failed === 1 ? "was" : "were"} skipped.`
-            : `Restored ${imported} note${imported === 1 ? "" : "s"} onto this device.`,
-      });
+      if (failed > 0) {
+        // A warning worth actually reading and dismissing on purpose,
+        // not a quick toast — some notes didn't make it.
+        showAlert({
+          title: "Backup partially restored",
+          message: `Restored ${imported} note${imported === 1 ? "" : "s"}, but ${failed} ${failed === 1 ? "was" : "were"} too damaged to read and ${failed === 1 ? "was" : "were"} skipped.`,
+        });
+      } else {
+        showToast(`Restored ${imported} note${imported === 1 ? "" : "s"} onto this device`);
+      }
     } catch (err) {
       showAlert({ title: "Couldn't restore that backup", message: String(err) });
     } finally {
