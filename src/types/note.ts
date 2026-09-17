@@ -112,7 +112,7 @@ export function noteToHtml(note: SermonNote): string {
   const body = note.blocks
     .map((block) => {
       if (block.type === "text" && block.text.trim()) {
-        return `<p style="font-size:15px;line-height:1.7;color:#333B45;">${escapeHtml(block.text)}</p>`;
+        return `<p style="font-size:15px;line-height:1.7;color:#333B45;">${renderMarkdownLite(block.text)}</p>`;
       }
       if (block.type === "heading" && block.text.trim()) {
         return `<h2 style="font-size:17px;font-weight:800;color:#182233;margin:22px 0 6px;">${escapeHtml(
@@ -170,4 +170,40 @@ function escapeHtml(input: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/**
+ * A tiny, deliberately minimal Markdown renderer for the note editor's
+ * lightweight rich text: **bold**, *italic*, and "- " bullet lines. Not a
+ * general Markdown implementation — just the handful of markers the
+ * editor's formatting toolbar actually inserts. Escapes HTML first, then
+ * applies formatting to the now-safe text, so no user-typed text can
+ * break out of the tags this generates.
+ */
+function renderMarkdownLite(text: string): string {
+  const escaped = escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+
+  const lines = escaped.split("\n");
+  let html = "";
+  let inList = false;
+  for (const line of lines) {
+    const bullet = line.match(/^-\s+(.*)/);
+    if (bullet) {
+      if (!inList) {
+        html += '<ul style="margin:6px 0;padding-left:20px;">';
+        inList = true;
+      }
+      html += `<li>${bullet[1]}</li>`;
+    } else {
+      if (inList) {
+        html += "</ul>";
+        inList = false;
+      }
+      html += `${line}<br/>`;
+    }
+  }
+  if (inList) html += "</ul>";
+  return html;
 }

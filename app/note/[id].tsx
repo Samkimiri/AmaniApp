@@ -104,6 +104,48 @@ export default function NoteEditorScreen() {
     focusExitTimer.current = setTimeout(() => setFocusMode(false), 80);
   }
 
+  // Lightweight rich text: body paragraphs stay plain strings (so backup,
+  // search, and plain-text sharing all keep working unchanged) but can
+  // hold Markdown-style **bold**, *italic*, and "- " bullets, applied via
+  // the formatting bar and rendered properly in the PDF export.
+  // `activeTextBlockId` tracks which body block the formatting buttons
+  // should apply to; `selections` remembers each block's last known
+  // cursor/selection range, since the formatting bar lives in the
+  // focus-mode bar and is tapped *instead of* the text input, which would
+  // otherwise lose the selection.
+  const [activeTextBlockId, setActiveTextBlockId] = useState<string | null>(null);
+  const selections = useRef<Record<string, { start: number; end: number }>>({});
+
+  function applyInlineFormat(blockId: string, marker: string) {
+    const sel = selections.current[blockId] ?? { start: 0, end: 0 };
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) => {
+        if (b.id !== blockId || b.type !== "text") return b;
+        const start = Math.min(sel.start, sel.end);
+        const end = Math.max(sel.start, sel.end);
+        const before = b.text.slice(0, start);
+        const middle = b.text.slice(start, end) || "text";
+        const after = b.text.slice(end);
+        return { ...b, text: `${before}${marker}${middle}${marker}${after}` };
+      }),
+    }));
+  }
+
+  function applyBullet(blockId: string) {
+    const sel = selections.current[blockId] ?? { start: 0, end: 0 };
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) => {
+        if (b.id !== blockId || b.type !== "text") return b;
+        const cursor = Math.min(sel.start, sel.end);
+        const lineStart = b.text.lastIndexOf("\n", Math.max(0, cursor - 1)) + 1;
+        if (b.text.slice(lineStart, lineStart + 2) === "- ") return b; // already a bullet
+        return { ...b, text: b.text.slice(0, lineStart) + "- " + b.text.slice(lineStart) };
+      }),
+    }));
+  }
+
   // On web, a multiline TextInput renders as a plain <textarea>, which the
   // browser gives a fixed default height and a drag handle — a boxed,
   // scrollable little widget rather than something that reads like part of
@@ -537,6 +579,39 @@ export default function NoteEditorScreen() {
       >
         {focusMode ? (
           <View style={styles.focusBar}>
+            {activeTextBlockId ? (
+              <View style={styles.formatButtons}>
+                <Pressable
+                  onPress={() => applyInlineFormat(activeTextBlockId, "**")}
+                  style={styles.formatButton}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Bold"
+                >
+                  <Text style={styles.formatButtonTextBold}>B</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => applyInlineFormat(activeTextBlockId, "*")}
+                  style={styles.formatButton}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Italic"
+                >
+                  <Text style={styles.formatButtonTextItalic}>I</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => applyBullet(activeTextBlockId)}
+                  style={styles.formatButton}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Bullet list"
+                >
+                  <Text style={styles.formatButtonText}>&bull;</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
             <Pressable
               onPress={() => Keyboard.dismiss()}
               style={styles.doneButton}
@@ -637,8 +712,14 @@ export default function NoteEditorScreen() {
                   key={block.id}
                   value={block.text}
                   onChangeText={(text) => updateTextBlock(block.id, text)}
-                  onFocus={handleTypingFocus}
+                  onFocus={() => {
+                    handleTypingFocus();
+                    setActiveTextBlockId(block.id);
+                  }}
                   onBlur={handleTypingBlur}
+                  onSelectionChange={(e) => {
+                    selections.current[block.id] = e.nativeEvent.selection;
+                  }}
                   onContentSizeChange={autoGrow(block.id, 26)}
                   placeholder="Start typing your notes…"
                   placeholderTextColor={colors.textFaint}
@@ -916,10 +997,24 @@ function makeStyles(colors: ColorPalette) {
   headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   focusBar: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 10,
+    gap: 12,
   },
+  formatButtons: { flexDirection: "row", gap: 8 },
+  formatButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F5F2EA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  formatButtonText: { fontFamily: fontFamily.sansBold, fontSize: 15, color: colors.textSecondary },
+  formatButtonTextBold: { fontFamily: fontFamily.sansExtraBold, fontSize: 14, color: colors.textPrimary },
+  formatButtonTextItalic: { fontFamily: fontFamily.serifItalic, fontSize: 15, color: colors.textPrimary },
   doneButton: {
     height: 34,
     paddingHorizontal: 16,
