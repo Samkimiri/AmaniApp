@@ -80,7 +80,7 @@ export default function LegalScreen() {
         <Text style={styles.p}>
           Because everything lives locally, losing this device, clearing its storage, or
           uninstalling the app deletes your notes permanently — we have no copy to restore from.
-          Profile → Backup lets you export everything to a file you keep yourself, and restore
+          Settings → Backup lets you export everything to a file you keep yourself, and restore
           from it later.
         </Text>
 

@@ -6,7 +6,7 @@ import { appLock, autoLockDelayMs, AutoLockOption } from "@/data/appLock";
  * Local app-lock (PIN) gate. There's no account or server here — this only
  * protects the notes already stored on this device from someone else
  * picking up the phone or browser tab, matching Amani's "no account
- * needed" design (see Profile). The user enables it, sets a PIN once, and
+ * needed" design (see Settings). The user enables it, sets a PIN once, and
  * chooses how quickly it should re-lock after the app is backgrounded.
  */
 export function useAppLock() {

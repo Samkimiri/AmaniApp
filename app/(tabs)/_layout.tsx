@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
-import { HomeIcon, NotesIcon, OpenBookIcon, UserIcon } from "@/components/icons";
+import { HomeIcon, NotesIcon, OpenBookIcon, SettingsIcon } from "@/components/icons";
 
 function TabIcon({
   focused,
@@ -90,14 +90,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="settings"
         options={{
-          title: "Profile",
+          title: "Settings",
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
-              label="Profile"
-              render={(c) => <UserIcon size={22} color={c} />}
+              label="Settings"
+              render={(c) => <SettingsIcon size={22} color={c} />}
               colors={colors}
               styles={styles}
             />

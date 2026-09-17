@@ -30,7 +30,7 @@ function Gate() {
 
   // The Stack stays mounted underneath the lock screen (rather than being
   // swapped out for it) so navigation state survives a lock/unlock cycle —
-  // otherwise "Lock now" from Profile would drop the user back on Home
+  // otherwise "Lock now" from Settings would drop the user back on Home
   // instead of returning them to where they were.
   return (
     <>

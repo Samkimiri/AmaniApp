@@ -22,7 +22,7 @@ const THEME_OPTIONS: { mode: ThemeMode; label: string }[] = [
   { mode: "system", label: "System" },
 ];
 
-export default function ProfileScreen() {
+export default function SettingsScreen() {
   const translationCode = useActiveTranslation(); // subscribes so this screen re-renders when the Bible tab switches translations
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const colors = useColors();
@@ -40,7 +40,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={textStyles.screenTitle}>Profile</Text>
+        <Text style={textStyles.screenTitle}>Settings</Text>
       </View>
 
       <View style={styles.content}>

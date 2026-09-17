@@ -386,7 +386,7 @@ export function searchKeyword(query: string, limit = 30): VerseResult[] {
  * Cross-references for ~29,000 verses (93% of the Bible), derived from
  * the Treasury of Scripture Knowledge via the public dataset at
  * github.com/CrossReferences-org/bible-cross-references (CC BY 4.0 —
- * credited in Profile and /legal). That dataset anchors references to
+ * credited in Settings and /legal). That dataset anchors references to
  * specific phrases within a verse and deliberately curates rather than
  * dumping every TSK entry; this converts it into one flat, deduplicated
  * list per verse (round-robin across phrase groups, capped at 6) to

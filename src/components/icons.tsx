@@ -62,6 +62,22 @@ export function MoonIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps) {
   );
 }
 
+export function SettingsIcon({ size, color = "#A6AEB8", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Circle cx={12} cy={12} r={3.2} />
+      <Line x1={12} y1={2.5} x2={12} y2={5.5} />
+      <Line x1={12} y1={18.5} x2={12} y2={21.5} />
+      <Line x1={2.5} y1={12} x2={5.5} y2={12} />
+      <Line x1={18.5} y1={12} x2={21.5} y2={12} />
+      <Line x1={5.4} y1={5.4} x2={7.5} y2={7.5} />
+      <Line x1={16.5} y1={16.5} x2={18.6} y2={18.6} />
+      <Line x1={18.6} y1={5.4} x2={16.5} y2={7.5} />
+      <Line x1={7.5} y1={16.5} x2={5.4} y2={18.6} />
+    </Svg>
+  );
+}
+
 export function UserIcon({ size, color = "#A6AEB8", strokeWidth }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>
@@ -100,14 +116,6 @@ export function ChevronDownIcon({ size, color = "#FFFFFF", strokeWidth = 2.6 }: 
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>
       <Path d="M6 9l6 6 6-6" />
-    </Svg>
-  );
-}
-
-export function ChevronUpIcon({ size, color = "#FFFFFF", strokeWidth = 2.6 }: IconProps) {
-  return (
-    <Svg {...base(size, strokeWidth)} stroke={color}>
-      <Path d="M6 15l6-6 6 6" />
     </Svg>
   );
 }

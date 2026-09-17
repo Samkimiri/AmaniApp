@@ -37,7 +37,6 @@ import {
 import { VerseCallout } from "@/components/VerseCallout";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { SwipeToDelete } from "@/components/SwipeToDelete";
-import { ReorderButtons } from "@/components/ReorderButtons";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "@/lib/speechRecognition";
 import { ShareSheet } from "@/components/ShareSheet";
@@ -380,17 +379,6 @@ export default function NoteEditorScreen() {
       ...n,
       blocks: n.blocks.map((b) => (b.id === blockId && b.type === "verse" ? { ...b, color } : b)),
     }));
-  }
-
-  function moveBlock(blockId: string, direction: -1 | 1) {
-    setNote((n) => {
-      const idx = n.blocks.findIndex((b) => b.id === blockId);
-      const targetIdx = idx + direction;
-      if (idx < 0 || targetIdx < 0 || targetIdx >= n.blocks.length) return n;
-      const blocks = [...n.blocks];
-      [blocks[idx], blocks[targetIdx]] = [blocks[targetIdx], blocks[idx]];
-      return { ...n, blocks };
-    });
   }
 
   function removeBlock(blockId: string) {
@@ -774,13 +762,7 @@ export default function NoteEditorScreen() {
             </View>
           ) : null}
 
-          {note.blocks.map((block, blockIndex) => {
-            const reorderProps = {
-              onMoveUp: () => moveBlock(block.id, -1),
-              onMoveDown: () => moveBlock(block.id, 1),
-              disableUp: blockIndex === 0,
-              disableDown: blockIndex === note.blocks.length - 1,
-            };
+          {note.blocks.map((block) => {
             if (block.type === "text") {
               return (
                 <TextInput
@@ -807,7 +789,6 @@ export default function NoteEditorScreen() {
             if (block.type === "heading") {
               return (
                 <View key={block.id} style={styles.headingRow}>
-                  <ReorderButtons {...reorderProps} />
                   <TextInput
                     value={block.text}
                     onChangeText={(text) => updateHeadingBlock(block.id, text)}
@@ -839,62 +820,47 @@ export default function NoteEditorScreen() {
             if (block.type === "verse") {
               const pickerOpen = colorPickerFor === block.id;
               return (
-                <View key={block.id} style={styles.blockRow}>
-                  <ReorderButtons {...reorderProps} />
-                  <View style={{ flex: 1 }}>
-                    <SwipeToDelete onDelete={() => removeBlock(block.id)}>
-                      <Pressable
-                        onPress={() => setColorPickerFor(pickerOpen ? null : block.id)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Change this verse's background color"
-                      >
-                        <VerseCallout reference={block.reference} text={block.text} color={block.color} />
-                      </Pressable>
-                      {pickerOpen ? (
-                        <View style={styles.colorPickerRow}>
-                          <ColorSwatchRow
-                            selected={block.color ?? "gold"}
-                            onSelect={(color) => updateVerseColor(block.id, color)}
-                          />
-                        </View>
-                      ) : null}
-                    </SwipeToDelete>
-                  </View>
-                </View>
+                <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
+                  <Pressable
+                    onPress={() => setColorPickerFor(pickerOpen ? null : block.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Change this verse's background color"
+                  >
+                    <VerseCallout reference={block.reference} text={block.text} color={block.color} />
+                  </Pressable>
+                  {pickerOpen ? (
+                    <View style={styles.colorPickerRow}>
+                      <ColorSwatchRow
+                        selected={block.color ?? "gold"}
+                        onSelect={(color) => updateVerseColor(block.id, color)}
+                      />
+                    </View>
+                  ) : null}
+                </SwipeToDelete>
               );
             }
             if (block.type === "audio") {
               return (
-                <View key={block.id} style={styles.blockRow}>
-                  <ReorderButtons {...reorderProps} />
-                  <View style={{ flex: 1 }}>
-                    <SwipeToDelete onDelete={() => removeBlock(block.id)}>
-                      <AudioBlockRow
-                        durationMillis={block.durationMillis}
-                        isPlaying={playingBlockId === block.id}
-                        onToggle={() => togglePlayback(block)}
-                        transcript={block.transcript}
-                      />
-                    </SwipeToDelete>
-                  </View>
-                </View>
+                <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
+                  <AudioBlockRow
+                    durationMillis={block.durationMillis}
+                    isPlaying={playingBlockId === block.id}
+                    onToggle={() => togglePlayback(block)}
+                    transcript={block.transcript}
+                  />
+                </SwipeToDelete>
               );
             }
             return (
-              <View key={block.id} style={styles.blockRow}>
-                <ReorderButtons {...reorderProps} />
-                <View style={{ flex: 1 }}>
-                  <SwipeToDelete onDelete={() => removeBlock(block.id)}>
-                    <View style={styles.imageBlock}>
-                      <Image source={{ uri: block.uri }} style={styles.image} />
-                      <View style={styles.imageCaption}>
-                        <ImagePlaceholderIcon size={14} />
-                        <Text style={styles.imageCaptionText}>Photo attached to this note</Text>
-                      </View>
-                    </View>
-                  </SwipeToDelete>
+              <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
+                <View style={styles.imageBlock}>
+                  <Image source={{ uri: block.uri }} style={styles.image} />
+                  <View style={styles.imageCaption}>
+                    <ImagePlaceholderIcon size={14} />
+                    <Text style={styles.imageCaptionText}>Photo attached to this note</Text>
+                  </View>
                 </View>
-              </View>
+              </SwipeToDelete>
             );
           })}
         </ScrollView>
@@ -1155,7 +1121,6 @@ function makeStyles(colors: ColorPalette) {
   tagChipRemove: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.verseText, opacity: 0.6 },
   bodyInput: { fontFamily: fontFamily.sansRegular, fontSize: 15, lineHeight: 26, color: colors.textSecondary, padding: 0 },
   headingRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 6 },
-  blockRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
   headingInput: {
     fontFamily: fontFamily.sansExtraBold,
     fontSize: 15.5,
