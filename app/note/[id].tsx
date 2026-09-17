@@ -36,6 +36,7 @@ import {
 } from "@/components/icons";
 import { VerseCallout } from "@/components/VerseCallout";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
+import { SwipeToDelete } from "@/components/SwipeToDelete";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ShareSheet } from "@/components/ShareSheet";
 import { getVerseCandidates, useActiveTranslation, VerseResult } from "@/data/bible";
@@ -313,7 +314,12 @@ export default function NoteEditorScreen() {
   }
 
   function removeBlock(blockId: string) {
-    setNote((n) => ({ ...n, blocks: n.blocks.filter((b) => b.id !== blockId) }));
+    setNote((n) => {
+      const blocks = n.blocks.filter((b) => b.id !== blockId);
+      // Never leave a note with zero blocks — there'd be nowhere left to
+      // tap to keep typing.
+      return { ...n, blocks: blocks.length > 0 ? blocks : [{ id: newId(), type: "text", text: "" }] };
+    });
   }
 
   function addTag() {
@@ -676,7 +682,7 @@ export default function NoteEditorScreen() {
             if (block.type === "verse") {
               const pickerOpen = colorPickerFor === block.id;
               return (
-                <View key={block.id}>
+                <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
                   <Pressable
                     onPress={() => setColorPickerFor(pickerOpen ? null : block.id)}
                     accessibilityRole="button"
@@ -692,27 +698,30 @@ export default function NoteEditorScreen() {
                       />
                     </View>
                   ) : null}
-                </View>
+                </SwipeToDelete>
               );
             }
             if (block.type === "audio") {
               return (
-                <AudioBlockRow
-                  key={block.id}
-                  durationMillis={block.durationMillis}
-                  isPlaying={playingBlockId === block.id}
-                  onToggle={() => togglePlayback(block)}
-                />
+                <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
+                  <AudioBlockRow
+                    durationMillis={block.durationMillis}
+                    isPlaying={playingBlockId === block.id}
+                    onToggle={() => togglePlayback(block)}
+                  />
+                </SwipeToDelete>
               );
             }
             return (
-              <View key={block.id} style={styles.imageBlock}>
-                <Image source={{ uri: block.uri }} style={styles.image} />
-                <View style={styles.imageCaption}>
-                  <ImagePlaceholderIcon size={14} />
-                  <Text style={styles.imageCaptionText}>Photo attached to this note</Text>
+              <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
+                <View style={styles.imageBlock}>
+                  <Image source={{ uri: block.uri }} style={styles.image} />
+                  <View style={styles.imageCaption}>
+                    <ImagePlaceholderIcon size={14} />
+                    <Text style={styles.imageCaptionText}>Photo attached to this note</Text>
+                  </View>
                 </View>
-              </View>
+              </SwipeToDelete>
             );
           })}
         </ScrollView>

@@ -7,6 +7,7 @@ import { useColors, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { SearchIcon } from "@/components/icons";
 import { NoteCard } from "@/components/NoteCard";
+import { SwipeToDelete } from "@/components/SwipeToDelete";
 import { useNotes } from "@/hooks/useNotes";
 import { notesStore } from "@/data/notesStore";
 import { useAlert } from "@/context/AlertContext";
@@ -119,11 +120,18 @@ export default function NotesScreen() {
         keyExtractor={(n) => n.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <NoteCard
-            note={item}
-            onPress={() => router.push(`/note/${item.id}`)}
-            onLongPress={() => confirmDelete(item.id, item.title)}
-          />
+          <SwipeToDelete
+            onDelete={async () => {
+              await notesStore.remove(item.id);
+              reload();
+            }}
+          >
+            <NoteCard
+              note={item}
+              onPress={() => router.push(`/note/${item.id}`)}
+              onLongPress={() => confirmDelete(item.id, item.title)}
+            />
+          </SwipeToDelete>
         )}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListEmptyComponent={
