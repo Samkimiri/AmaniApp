@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ColorPalette } from "@/theme/colors";
@@ -44,7 +44,7 @@ export default function SettingsScreen() {
         <Text style={textStyles.screenTitle}>Settings</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.avatarLarge}>
           <UserIcon size={30} color="#7A6A45" />
         </View>
@@ -126,7 +126,7 @@ export default function SettingsScreen() {
           CrossReferences.org (CC BY 4.0).{"\n"}
           Typeset in Newsreader &amp; Plus Jakarta Sans (SIL Open Font License).
         </Text>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -135,7 +135,7 @@ function makeStyles(colors: ColorPalette) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
     header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
-    content: { paddingHorizontal: 24, alignItems: "center" },
+    content: { paddingHorizontal: 24, paddingBottom: 40, alignItems: "center" },
     avatarLarge: {
       width: 72,
       height: 72,
