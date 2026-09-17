@@ -117,8 +117,20 @@ eas.json               EAS Build profile scaffold — not yet used to produce a 
 ## Native builds
 
 `eas.json` and `app.json`'s `ios.buildNumber`/`android.versionCode` are
-in place, but no `.ipa`/`.aab` has actually been built or submitted.
-That requires:
+in place, and the native config has been validated with a local
+`npx expo prebuild` dry run — Android generates its native project
+cleanly (the folder itself is deleted afterward; this stays a managed-
+workflow project, and EAS Build does its own prebuild in the cloud). iOS
+prebuild can only run on macOS or Linux, so it hasn't been validated the
+same way from this Windows environment — worth running once before a
+real iOS build, just to catch config issues early:
+
+```bash
+npx expo prebuild --platform android --no-install   # then delete the generated android/ folder
+npx expo prebuild --platform ios --no-install        # macOS/Linux only; delete ios/ after
+```
+
+No `.ipa`/`.aab` has actually been built or submitted yet. That requires:
 
 ```bash
 npx eas login          # your own Expo account

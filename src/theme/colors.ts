@@ -41,7 +41,11 @@ export interface ColorPalette {
 export const lightColors: ColorPalette = {
   navy: "#1F3A5F",
   navyDark: "#16283F",
-  gold: "#B8860B",
+  // gold, textMuted, and textFaint were measured well under WCAG AA
+  // contrast (2.1:1–3.1:1) against this theme's background — too faint
+  // to read comfortably where they're used as real text, not just
+  // decoration. Darkened each until it clears 4.5:1 against #FBF8F4.
+  gold: "#8A6208",
   goldLight: "#D9B75C",
 
   background: "#FBF8F4",
@@ -51,8 +55,8 @@ export const lightColors: ColorPalette = {
 
   textPrimary: "#182233",
   textSecondary: "#5B6472",
-  textMuted: "#9AA3AE",
-  textFaint: "#A6AEB8",
+  textMuted: "#636C77",
+  textFaint: "#666F7A",
 
   verseBg: "#FBF1DE",
   verseText: "#8A5A00",
@@ -78,7 +82,9 @@ export const darkColors: ColorPalette = {
   textPrimary: "#F1F0EC",
   textSecondary: "#B8C0CC",
   textMuted: "#8891A0",
-  textFaint: "#69727E",
+  // #69727E measured 3.66:1 against this background — under the 4.5:1
+  // AA threshold for normal text. Lightened until it clears 4.5:1.
+  textFaint: "#7E8894",
 
   verseBg: "#2A2311",
   verseText: "#E3C077",
@@ -97,7 +103,14 @@ export const darkColors: ColorPalette = {
 export const readingColors: ColorPalette = {
   navy: "#5A4326",
   navyDark: "#463319",
-  gold: "#9C6B1F",
+  // gold, textMuted, and textFaint were originally lighter/warmer, but
+  // measured well under WCAG AA contrast (2.4:1–3.9:1) against this
+  // theme's pale paper background — too faint to actually read
+  // comfortably, which defeats the point of a *reading*-focused theme.
+  // Darkened all three until each clears 4.5:1 (verified against
+  // #F4ECD8), while keeping textPrimary/textSecondary's already-strong
+  // contrast untouched.
+  gold: "#7A5116",
   goldLight: "#B98A3A",
 
   background: "#F4ECD8",
@@ -107,8 +120,8 @@ export const readingColors: ColorPalette = {
 
   textPrimary: "#3B2F1E",
   textSecondary: "#5C4A32",
-  textMuted: "#8A7857",
-  textFaint: "#A6976F",
+  textMuted: "#6E5A3A",
+  textFaint: "#766244",
 
   verseBg: "#EDE0BE",
   verseText: "#6B4A15",

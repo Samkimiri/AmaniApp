@@ -45,6 +45,7 @@ import { getVerseCandidates, useActiveTranslation, VerseResult } from "@/data/bi
 import { notesStore } from "@/data/notesStore";
 import { persistRecording, resolvePlayableUri, resolvePlayableUriAsDataUrl } from "@/data/audioStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
+import { getNoteTemplate } from "@/data/noteTemplates";
 import { useAlert } from "@/context/AlertContext";
 import { useHint } from "@/hooks/useHint";
 import { HintBanner } from "@/components/HintBanner";
@@ -55,7 +56,10 @@ function isBlankNote(note: SermonNote): boolean {
     !note.church?.trim() &&
     !note.preacher?.trim() &&
     !(note.tags && note.tags.length > 0) &&
-    note.blocks.every((b) => b.type === "text" && !b.text.trim())
+    // A heading counts as structure, not content — a fresh templated
+    // note (all headings, no typing yet) should still be discardable,
+    // same as a truly blank one.
+    note.blocks.every((b) => b.type === "heading" || (b.type === "text" && !b.text.trim()))
   );
 }
 
@@ -63,26 +67,38 @@ function isBlankNote(note: SermonNote): boolean {
 // without letting the history array grow unbounded over a long one.
 const MAX_HISTORY = 100;
 
-function emptyNote(id: string): SermonNote {
+function emptyNote(id: string, templateId?: string): SermonNote {
   const now = new Date().toISOString();
   return {
     id,
     title: "",
     church: "",
     date: new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }),
-    blocks: [{ id: newId(), type: "text", text: "" }],
+    blocks: getNoteTemplate(templateId).buildBlocks(),
     createdAt: now,
     updatedAt: now,
   };
 }
 
 export default function NoteEditorScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, template } = useLocalSearchParams<{ id: string; template?: string }>();
   const isNew = id === "new";
   const translationCode = useActiveTranslation();
   const colors = useColors();
   const styles = makeStyles(colors);
-  const [note, setNote] = useState<SermonNote>(() => emptyNote(isNew ? newId() : id));
+  const [note, setNote] = useState<SermonNote>(() => emptyNote(isNew ? newId() : id, template));
+  // expo-router's query params aren't always available on the very first
+  // render on web (they can resolve a tick after mount), so the ?template=
+  // param above is sometimes still undefined when this lazy initializer
+  // runs, silently falling back to the blank template. Once `template`
+  // actually arrives, apply it for real — this only matters for a note
+  // that's still brand new and untouched, so it can't clobber typing.
+  useEffect(() => {
+    if (isNew && template) {
+      setNote((n) => ({ ...n, blocks: getNoteTemplate(template).buildBlocks() }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template]);
   const [loaded, setLoaded] = useState(isNew);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
   const [verseBarOpen, setVerseBarOpen] = useState(false);

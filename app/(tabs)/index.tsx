@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
@@ -17,6 +17,9 @@ import { getVerseOfTheDay } from "@/data/verseOfTheDay";
 import { useActiveTranslation } from "@/data/bible";
 import { shareVerseImageUri } from "@/lib/shareVerseImage";
 import { useAlert } from "@/context/AlertContext";
+import { NOTE_TEMPLATES } from "@/data/noteTemplates";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import { OnboardingModal } from "@/components/OnboardingModal";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -41,7 +44,14 @@ export default function HomeScreen() {
 
   const shotRef = useRef<ViewShot>(null);
   const [sharingVerse, setSharingVerse] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const showAlert = useAlert();
+  const { visible: onboardingVisible, complete: completeOnboarding } = useOnboarding();
+
+  function startNoteFromTemplate(templateId: string) {
+    setTemplatePickerOpen(false);
+    router.push(`/note/new?template=${templateId}`);
+  }
 
   async function shareDailyVerse() {
     if (!verseOfTheDay) return;
@@ -87,7 +97,7 @@ export default function HomeScreen() {
         <PrimaryButton
           label="New sermon note"
           icon={<PlusIcon size={18} />}
-          onPress={() => router.push("/note/new")}
+          onPress={() => setTemplatePickerOpen(true)}
           style={{ marginTop: 20 }}
         />
 
@@ -131,6 +141,32 @@ export default function HomeScreen() {
           <VerseImageCard ref={shotRef} verseText={verseOfTheDay.text} reference={verseOfTheDay.reference} footerTitle="Verse of the Day" />
         </View>
       ) : null}
+
+      <Modal
+        visible={templatePickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTemplatePickerOpen(false)}
+      >
+        <Pressable style={styles.pickerScrim} onPress={() => setTemplatePickerOpen(false)} />
+        <View style={styles.pickerSheet}>
+          <Text style={styles.pickerTitle}>Start a new note</Text>
+          {NOTE_TEMPLATES.map((t) => (
+            <Pressable
+              key={t.id}
+              style={styles.pickerRow}
+              onPress={() => startNoteFromTemplate(t.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`${t.name} — ${t.description}`}
+            >
+              <Text style={styles.pickerRowName}>{t.name}</Text>
+              <Text style={styles.pickerRowDescription}>{t.description}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </Modal>
+
+      <OnboardingModal visible={onboardingVisible} onComplete={completeOnboarding} />
     </SafeAreaView>
   );
 }
@@ -174,5 +210,22 @@ function makeStyles(colors: ColorPalette) {
     tilePressed: { opacity: 0.7 },
     tileTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
     tileSubtitle: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },
+    pickerScrim: { flex: 1, backgroundColor: colors.scrim },
+    pickerSheet: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      paddingHorizontal: 22,
+      paddingTop: 18,
+      paddingBottom: 34,
+    },
+    pickerTitle: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary, marginBottom: 10 },
+    pickerRow: {
+      paddingVertical: 13,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    pickerRowName: { fontFamily: fontFamily.sansBold, fontSize: 14.5, color: colors.textPrimary },
+    pickerRowDescription: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 2 },
   });
 }
