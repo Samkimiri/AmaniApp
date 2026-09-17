@@ -39,6 +39,7 @@ import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { SwipeToDelete } from "@/components/SwipeToDelete";
 import { ReorderButtons } from "@/components/ReorderButtons";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "@/lib/speechRecognition";
 import { ShareSheet } from "@/components/ShareSheet";
 import { getVerseCandidates, useActiveTranslation, VerseResult } from "@/data/bible";
 import { notesStore } from "@/data/notesStore";
@@ -167,6 +168,30 @@ export default function NoteEditorScreen() {
 
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  // Live captions while recording, native only (iOS/Android) — the OS's
+  // own on-device speech recognizer, same engine used for dictation.
+  // `liveCaption` is the current in-progress phrase (replaced as it's
+  // refined); `finalTranscriptRef` accumulates each finished phrase for
+  // the whole recording, since `continuous` mode emits one final result
+  // per pause rather than one for the entire session.
+  const [liveCaption, setLiveCaption] = useState("");
+  const finalTranscriptRef = useRef("");
+
+  useSpeechRecognitionEvent("result", (event) => {
+    const text = event.results[0]?.transcript ?? "";
+    if (event.isFinal) {
+      finalTranscriptRef.current = `${finalTranscriptRef.current} ${text}`.trim();
+      setLiveCaption("");
+    } else {
+      setLiveCaption(text);
+    }
+  });
+  useSpeechRecognitionEvent("error", (event) => {
+    // Captions are a bonus on top of the recording, not the recording
+    // itself — never block or alert on this failing (permission denied,
+    // engine busy, no network for the on-device model's first download).
+    console.warn("Speech recognition unavailable:", event.error, event.message);
+  });
   const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const playingObjectUrlRef = useRef<string | null>(null);
@@ -184,6 +209,7 @@ export default function NoteEditorScreen() {
       soundRef.current?.unloadAsync();
       if (playingObjectUrlRef.current) URL.revokeObjectURL(playingObjectUrlRef.current);
       recordingRef.current?.stopAndUnloadAsync().catch(() => {});
+      if (recordingRef.current && Platform.OS !== "web") ExpoSpeechRecognitionModule.stop();
       if (focusExitTimer.current) clearTimeout(focusExitTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -436,6 +462,9 @@ export default function NoteEditorScreen() {
    * immediately (not after an async setState round-trip) to correctly
    * save the note it belongs to before navigating away. */
   async function stopRecordingAndGetBlock(activeRecording: Audio.Recording): Promise<NoteBlock | null> {
+    if (Platform.OS !== "web") {
+      ExpoSpeechRecognitionModule.stop();
+    }
     try {
       await activeRecording.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
@@ -449,6 +478,7 @@ export default function NoteEditorScreen() {
         type: "audio",
         uri: persistedUri,
         durationMillis: status.durationMillis ?? recordingDuration,
+        transcript: finalTranscriptRef.current.trim() || undefined,
       };
     } catch (err) {
       showAlert({ title: "Couldn't save the recording", message: String(err) });
@@ -457,6 +487,8 @@ export default function NoteEditorScreen() {
       setRecording(null);
       recordingRef.current = null;
       setRecordingDuration(0);
+      finalTranscriptRef.current = "";
+      setLiveCaption("");
     }
   }
 
@@ -482,6 +514,31 @@ export default function NoteEditorScreen() {
       setRecording(rec);
       recordingRef.current = rec;
       setRecordingDuration(0);
+
+      if (Platform.OS !== "web") {
+        finalTranscriptRef.current = "";
+        setLiveCaption("");
+        const speechPermission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        if (speechPermission.granted) {
+          // requiresOnDeviceRecognition is essential, not optional — without
+          // it this library defaults to sending audio to a network speech
+          // service (Apple's or Google's), which would make this feature
+          // quietly contradict Amani's "nothing ever leaves your device"
+          // privacy claim. On-device recognition needs a downloaded
+          // language model (Android 13+) and isn't available on every
+          // device/OS version; it just fails silently into no captions
+          // for that recording rather than falling back to the network.
+          ExpoSpeechRecognitionModule.start({
+            lang: "en-US",
+            interimResults: true,
+            continuous: true,
+            requiresOnDeviceRecognition: true,
+          });
+        }
+        // If speech permission is denied, the recording itself still
+        // proceeds without captions — this is a bonus feature, not a
+        // requirement to record at all.
+      }
     } catch (err) {
       showAlert({ title: "Couldn't start recording", message: String(err) });
     }
@@ -816,6 +873,7 @@ export default function NoteEditorScreen() {
                         durationMillis={block.durationMillis}
                         isPlaying={playingBlockId === block.id}
                         onToggle={() => togglePlayback(block)}
+                        transcript={block.transcript}
                       />
                     </SwipeToDelete>
                   </View>
@@ -843,17 +901,24 @@ export default function NoteEditorScreen() {
 
         {recording ? (
           <View style={styles.recordingBar}>
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingText}>Recording… {formatDuration(recordingDuration)}</Text>
-            <Pressable
-              style={styles.stopButton}
-              onPress={toggleRecording}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Stop recording"
-            >
-              <StopIcon size={13} />
-            </Pressable>
+            <View style={styles.recordingBarTop}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingText}>Recording… {formatDuration(recordingDuration)}</Text>
+              <Pressable
+                style={styles.stopButton}
+                onPress={toggleRecording}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Stop recording"
+              >
+                <StopIcon size={13} />
+              </Pressable>
+            </View>
+            {liveCaption ? (
+              <Text style={styles.liveCaption} numberOfLines={2}>
+                {liveCaption}
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -1108,15 +1173,15 @@ function makeStyles(colors: ColorPalette) {
   imageCaptionText: { fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: colors.textSecondary },
 
   recordingBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
     backgroundColor: colors.navy,
     paddingHorizontal: 20,
     paddingVertical: 12,
+    gap: 6,
   },
+  recordingBarTop: { flexDirection: "row", alignItems: "center", gap: 10 },
   recordingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FF6B5E" },
   recordingText: { flex: 1, fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.white },
+  liveCaption: { fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: "#C9D4E3", fontStyle: "italic" },
   stopButton: {
     width: 30,
     height: 30,

@@ -23,6 +23,7 @@ function noteSearchText(note: SermonNote): string {
     ...note.blocks.map((b) => {
       if (b.type === "text" || b.type === "heading") return b.text;
       if (b.type === "verse") return `${b.reference} ${b.text}`;
+      if (b.type === "audio") return b.transcript ?? "";
       return "";
     }),
   ]

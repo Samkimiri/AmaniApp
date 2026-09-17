@@ -55,7 +55,10 @@ export default function LegalScreen() {
         </Bullet>
         <Bullet styles={styles} title="Microphone">
           Only when you tap the record button to attach sermon audio to a note. The recording is
-          saved on your device the same way.
+          saved on your device the same way. On iOS and Android, Amani also uses your device's
+          built-in, on-device speech recognizer to caption the recording live as you record it —
+          the same technology behind dictation, not a cloud service. Nothing is transcribed on
+          web, and no audio ever leaves your device for this.
         </Bullet>
         <Bullet styles={styles} title="Notifications">
           Amani doesn't use notifications.

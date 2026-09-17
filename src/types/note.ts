@@ -38,6 +38,12 @@ export interface AudioBlock {
   type: "audio";
   uri: string;
   durationMillis: number;
+  /** Live-captioned while recording, on-device, via the OS's speech
+   * recognizer — native only (iOS/Android); undefined for recordings
+   * made on web, or if recognition wasn't available or permitted. Never
+   * sent anywhere: this is the same on-device engine iOS/Android already
+   * use for dictation, not a cloud transcription call. */
+  transcript?: string;
 }
 
 export type NoteBlock = TextBlock | HeadingBlock | VerseBlock | ImageBlock | AudioBlock;
@@ -95,6 +101,7 @@ export function noteToPlainText(note: SermonNote): string {
       lines.push(`[Photo${block.caption ? `: ${block.caption}` : ""}]`);
     } else if (block.type === "audio") {
       lines.push(`[Audio recording, ${formatDuration(block.durationMillis)}]`);
+      if (block.transcript) lines.push(block.transcript);
     }
   }
   lines.push("");
@@ -143,9 +150,14 @@ export function noteToHtml(note: SermonNote): string {
         return `<img src="${escapeHtml(block.uri)}" style="width:100%;border-radius:8px;margin:12px 0;" />`;
       }
       if (block.type === "audio") {
+        const transcriptHtml = block.transcript
+          ? `<div style="margin-top:6px;font-size:13px;font-style:italic;color:#333B45;">${escapeHtml(
+              block.transcript
+            )}</div>`
+          : "";
         return `<div style="margin:12px 0;padding:10px 14px;border:1px solid #ECE4D4;border-radius:8px;color:#5B6472;font-size:13px;">&#127911; Audio recording &middot; ${escapeHtml(
           formatDuration(block.durationMillis)
-        )}</div>`;
+        )}${transcriptHtml}</div>`;
       }
       return "";
     })

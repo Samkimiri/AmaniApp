@@ -50,6 +50,13 @@
         {
           "microphonePermission": "Amani uses your microphone to record sermon audio alongside your notes."
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Amani uses your microphone to caption sermon audio live as you record it.",
+          "speechRecognitionPermission": "Amani uses on-device speech recognition to caption sermon audio live as you record it."
+        }
       ]
     ]
   }
