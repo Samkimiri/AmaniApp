@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
-import { SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, PlusIcon } from "@/components/icons";
+import { SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, OpenBookIcon, PlusIcon } from "@/components/icons";
 import {
   AVAILABLE_TRANSLATIONS,
   ensureCrossReferencesLoaded,
@@ -277,6 +277,15 @@ export default function BibleScreen() {
             >
               <PlusIcon size={17} color={colors.navy} strokeWidth={2} />
             </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.readButton, pressed && styles.actionButtonPressed]}
+              onPress={() => router.push(`/bible-read?book=${encodeURIComponent(selected.book)}&chapter=${selected.chapter}`)}
+              accessibilityRole="button"
+              accessibilityLabel={`Read all of ${selected.book} ${selected.chapter}`}
+            >
+              <OpenBookIcon size={16} color={colors.white} />
+              <Text style={styles.readButtonText}>Read chapter</Text>
+            </Pressable>
           </View>
 
           {savedBookmarks.length > 0 ? (
@@ -411,6 +420,18 @@ function makeStyles(colors: ColorPalette) {
     justifyContent: "center",
   },
   actionButtonActive: { backgroundColor: colors.verseBg, borderColor: "#F0E1BC" },
+  readButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.navy,
+    paddingHorizontal: 14,
+  },
+  readButtonText: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.white },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   chip: {
     backgroundColor: colors.card,

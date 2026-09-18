@@ -40,6 +40,7 @@ function Gate() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="note/[id]" options={{ presentation: "card" }} />
         <Stack.Screen name="legal" options={{ presentation: "card" }} />
+        <Stack.Screen name="bible-read" options={{ presentation: "card" }} />
       </Stack>
       {enabled && locked ? <LockScreen onUnlock={unlock} /> : null}
     </>
