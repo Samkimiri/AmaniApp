@@ -83,10 +83,15 @@ export default function LegalScreen() {
         <Text style={styles.p}>
           Amani itself has no accounts and collects no name, email, or personal information — the
           only sign-in involved is Google's own, and only if you turn on Drive backup, which
-          Amani never sees your password for. We don't sell or share data, because none is
-          gathered in the first place. If a future version adds anonymous, aggregate usage
-          analytics (for example, to see which screens are used), this page will say so
-          specifically before that ships — it will never include the content of your notes.
+          Amani never sees your password for. We don't sell your data or use it for advertising.
+        </Text>
+
+        <Text style={styles.h2}>Anonymous usage counts (web only)</Text>
+        <Text style={styles.p}>
+          The website version uses Vercel Web Analytics to count aggregate page views and
+          visitors, so we can tell roughly how many people use Amani. It doesn't use cookies,
+          doesn't track you across other sites, and never includes the content of your notes,
+          verses, or recordings. The iOS and Android apps don't include this.
         </Text>
 
         <Text style={styles.h2}>Your data is only as safe as this device</Text>
