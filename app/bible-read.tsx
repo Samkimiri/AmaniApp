@@ -1,18 +1,34 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ColorPalette } from "@/theme/colors";
-import { useColors, useTextStyles } from "@/context/ThemeContext";
+import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@/components/icons";
-import { BOOKS, chapterCount, getChapter, TRANSLATION, useActiveTranslation } from "@/data/bible";
+import { BookmarkIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@/components/icons";
+import {
+  BOOKS,
+  chapterCount,
+  formatReference,
+  getChapter,
+  TRANSLATION,
+  useActiveTranslation,
+  VerseResult,
+} from "@/data/bible";
 import { saveReadingPosition } from "@/data/readingProgress";
+import { bookmarks, highlights } from "@/data/verseMarks";
+import {
+  LINE_SPACING_RATIO,
+  ReaderLayout,
+  ReaderSettings,
+  TEXT_SIZE_PX,
+  updateReaderSettings,
+  useReaderSettings,
+} from "@/data/readerSettings";
+import { getHighlightColor } from "@/theme/highlightColors";
 import { TranslationPicker } from "@/components/TranslationPicker";
-
-type ReaderLayout = "verses" | "paragraph";
-const LAYOUT_KEY = "amani.readerLayout.v1";
+import { VerseActionSheet } from "@/components/VerseActionSheet";
+import { ReaderSettingsSheet } from "@/components/ReaderSettingsSheet";
 
 /**
  * A continuous, chapter-at-a-time reading view — distinct from the Bible
@@ -22,45 +38,100 @@ const LAYOUT_KEY = "amani.readerLayout.v1";
  * to move through what's already there.
  */
 export default function BibleReadScreen() {
-  const params = useLocalSearchParams<{ book?: string; chapter?: string }>();
+  const params = useLocalSearchParams<{ book?: string; chapter?: string; verse?: string; endVerse?: string }>();
   const [book, setBook] = useState(params.book && BOOKS.includes(params.book) ? params.book : BOOKS[0]);
   const [chapter, setChapter] = useState(() => {
     const n = Number(params.chapter);
     return Number.isFinite(n) && n > 0 ? n : 1;
   });
+  // Verse(s) to spotlight when arriving from a scripture reference in a
+  // note; cleared as soon as the reader moves to another chapter.
+  const [focus, setFocus] = useState<{ start: number; end: number } | null>(() => {
+    const start = Number(params.verse);
+    if (!Number.isFinite(start) || start < 1) return null;
+    const end = Number(params.endVerse);
+    return { start, end: Number.isFinite(end) && end > start ? end : start };
+  });
   const scrollRef = useRef<ScrollView>(null);
-  const [layout, setLayout] = useState<ReaderLayout>("verses");
+  const versesTop = useRef(0);
+  const paragraphHeight = useRef(0);
+  const rowTops = useRef<Record<number, number>>({});
+  const settings = useReaderSettings();
+  const { layout } = settings;
   const [versionPickerOpen, setVersionPickerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerBook, setPickerBook] = useState<string | null>(null);
+  const [actionVerse, setActionVerse] = useState<VerseResult | null>(null);
+  const [highlightMap, setHighlightMap] = useState<Record<string, string | undefined>>({});
+  const [bookmarkSet, setBookmarkSet] = useState<Set<string>>(new Set());
   const translationCode = useActiveTranslation();
   const colors = useColors();
-  const textStyles = useTextStyles();
-  const styles = makeStyles(colors);
+  const styles = makeStyles(colors, settings);
 
-  useEffect(() => {
-    AsyncStorage.getItem(LAYOUT_KEY).then((saved) => {
-      if (saved === "verses" || saved === "paragraph") setLayout(saved);
-    });
+  const refreshMarks = useCallback(() => {
+    highlights.getAll().then((list) => setHighlightMap(Object.fromEntries(list.map((m) => [m.reference, m.color]))));
+    bookmarks.getAll().then((list) => setBookmarkSet(new Set(list.map((m) => m.reference))));
   }, []);
+  useEffect(refreshMarks, [refreshMarks]);
 
   function chooseLayout(next: ReaderLayout) {
-    setLayout(next);
-    AsyncStorage.setItem(LAYOUT_KEY, next).catch(() => {});
+    updateReaderSettings({ layout: next });
   }
 
   const verses = useMemo(() => getChapter(book, chapter), [book, chapter, translationCode]);
   useEffect(() => {
     saveReadingPosition({ book, chapter });
     scrollRef.current?.scrollTo({ y: 0, animated: false });
+    rowTops.current = {};
   }, [book, chapter]);
+
+  // Bring the spotlighted verse into view once the chapter has laid out.
+  useEffect(() => {
+    if (!focus) return;
+    const timer = setTimeout(() => {
+      let y: number | undefined;
+      if (layout === "verses") {
+        const top = rowTops.current[focus.start];
+        if (top !== undefined) y = versesTop.current + top;
+      } else {
+        const before = verses.filter((v) => v.verse < focus.start).reduce((n, v) => n + v.text.length, 0);
+        const total = verses.reduce((n, v) => n + v.text.length, 0) || 1;
+        y = versesTop.current + (before / total) * paragraphHeight.current;
+      }
+      if (y !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, y - 90), animated: true });
+    }, 250);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, book, chapter, layout]);
 
   const totalChapters = chapterCount(book);
   const bookIndex = BOOKS.indexOf(book);
 
   function goToChapter(nextBook: string, nextChapter: number) {
+    setFocus(null);
     setBook(nextBook);
     setChapter(nextChapter);
+  }
+
+  function openVerse(verse: number, text: string) {
+    if (text.startsWith("[")) return; // translator's note, not a verse
+    setActionVerse({
+      book,
+      chapter,
+      verse,
+      text,
+      reference: formatReference(book, chapter, verse),
+    });
+  }
+
+  function verseMark(verse: number) {
+    const ref = formatReference(book, chapter, verse);
+    return { color: highlightMap[ref], hasHighlight: ref in highlightMap, bookmarked: bookmarkSet.has(ref) };
+  }
+
+  function isFocused(verse: number) {
+    return !!focus && verse >= focus.start && verse <= focus.end;
   }
 
   function previousChapter() {
@@ -109,15 +180,25 @@ export default function BibleReadScreen() {
           </Text>
           <ChevronDownIcon size={12} strokeWidth={3} color={colors.textSecondary} />
         </Pressable>
-        <Pressable
-          onPress={() => setVersionPickerOpen(true)}
-          style={styles.versionChip}
-          accessibilityRole="button"
-          accessibilityLabel={`Bible version, currently ${TRANSLATION.code}. Tap to change.`}
-        >
-          <Text style={styles.versionChipText}>{TRANSLATION.code}</Text>
-          <ChevronDownIcon size={10} strokeWidth={3} color={colors.white} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={() => setSettingsOpen(true)}
+            style={styles.settingsButton}
+            accessibilityRole="button"
+            accessibilityLabel="Reading settings: text size, spacing and font"
+          >
+            <Text style={styles.settingsButtonText}>Aa</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setVersionPickerOpen(true)}
+            style={styles.versionChip}
+            accessibilityRole="button"
+            accessibilityLabel={`Bible version, currently ${TRANSLATION.code}. Tap to change.`}
+          >
+            <Text style={styles.versionChipText}>{TRANSLATION.code}</Text>
+            <ChevronDownIcon size={10} strokeWidth={3} color={colors.white} />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -143,26 +224,62 @@ export default function BibleReadScreen() {
             ))}
           </View>
         </View>
+        <Text style={styles.tapHint}>Tap a verse to highlight, bookmark, copy or share it.</Text>
         {layout === "verses" ? (
-          <View>
+          <View onLayout={(e) => (versesTop.current = e.nativeEvent.layout.y)}>
             {verses.map((v) => {
               const isNote = v.text.startsWith("[");
+              const mark = verseMark(v.verse);
+              const hl = mark.hasHighlight ? getHighlightColor(mark.color) : null;
               return (
-                <View key={v.verse} style={styles.verseRow}>
-                  <Text style={styles.verseGutter}>{v.verse}</Text>
-                  <Text style={[styles.verseBody, isNote && styles.verseNote]}>{v.text}</Text>
-                </View>
+                <Pressable
+                  key={v.verse}
+                  onPress={() => openVerse(v.verse, v.text)}
+                  onLayout={(e) => (rowTops.current[v.verse] = e.nativeEvent.layout.y)}
+                  disabled={isNote}
+                  style={[
+                    styles.verseRow,
+                    hl && { backgroundColor: hl.background },
+                    isFocused(v.verse) && styles.verseFocused,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Verse ${v.verse}. ${isNote ? "" : "Tap for options. "}${v.text}`}
+                >
+                  <View style={styles.verseGutter}>
+                    <Text style={styles.verseGutterText}>{v.verse}</Text>
+                    {mark.bookmarked ? <BookmarkIcon size={11} color={colors.gold} /> : null}
+                  </View>
+                  <Text style={[styles.verseBody, isNote && styles.verseNote, hl && { color: hl.text }]}>{v.text}</Text>
+                </Pressable>
               );
             })}
           </View>
         ) : (
-          <Text style={styles.chapterText}>
-            {verses.map((v) => (
-              <Text key={v.verse}>
-                <Text style={styles.verseNumber}>{v.verse} </Text>
-                <Text>{v.text} </Text>
-              </Text>
-            ))}
+          <Text
+            style={styles.chapterText}
+            onLayout={(e) => {
+              versesTop.current = e.nativeEvent.layout.y;
+              paragraphHeight.current = e.nativeEvent.layout.height;
+            }}
+          >
+            {verses.map((v) => {
+              const isNote = v.text.startsWith("[");
+              const mark = verseMark(v.verse);
+              const hl = mark.hasHighlight ? getHighlightColor(mark.color) : null;
+              return (
+                <Text
+                  key={v.verse}
+                  onPress={() => openVerse(v.verse, v.text)}
+                  style={[
+                    hl && { backgroundColor: hl.background, color: hl.text },
+                    isFocused(v.verse) && styles.paragraphFocused,
+                  ]}
+                >
+                  <Text style={styles.verseNumber}>{v.verse}{mark.bookmarked ? "★" : ""} </Text>
+                  <Text>{v.text} </Text>
+                </Text>
+              );
+            })}
           </Text>
         )}
       </ScrollView>
@@ -191,6 +308,8 @@ export default function BibleReadScreen() {
       </View>
 
       <TranslationPicker visible={versionPickerOpen} onClose={() => setVersionPickerOpen(false)} />
+      <ReaderSettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <VerseActionSheet verse={actionVerse} onClose={() => setActionVerse(null)} onChanged={refreshMarks} />
 
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.pickerScrim} onPress={() => setPickerOpen(false)} />
@@ -250,7 +369,12 @@ export default function BibleReadScreen() {
   );
 }
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, settings: ReaderSettings) {
+  const size = TEXT_SIZE_PX[settings.textSize];
+  const lineHeight = Math.round(size * LINE_SPACING_RATIO[settings.lineSpacing]);
+  const numberSize = Math.max(11, Math.round(size * 0.62));
+  const bodyFont = settings.font === "serif" ? fontFamily.serifRegular : fontFamily.sansRegular;
+  const noteFont = settings.font === "serif" ? fontFamily.serifItalic : fontFamily.sansRegular;
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
     header: {
@@ -260,7 +384,7 @@ function makeStyles(colors: ColorPalette) {
       paddingHorizontal: 8,
       paddingBottom: 8,
     },
-    headerButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", marginRight: 26 },
+    headerButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     titleButton: { flexDirection: "row", alignItems: "center", gap: 6 },
     titleText: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary },
     content: { paddingHorizontal: 24, paddingBottom: 40 },
@@ -273,11 +397,18 @@ function makeStyles(colors: ColorPalette) {
     layoutOptionActive: { backgroundColor: colors.navy },
     layoutOptionText: { fontFamily: fontFamily.sansBold, fontSize: 11.5, color: colors.textSecondary },
     layoutOptionTextActive: { color: colors.white },
-    verseRow: { flexDirection: "row", marginBottom: 10 },
-    verseGutter: { width: 30, fontFamily: fontFamily.sansExtraBold, fontSize: 11, lineHeight: 30, color: colors.gold },
-    verseBody: { flex: 1, fontFamily: fontFamily.serifRegular, fontSize: 18, lineHeight: 30, color: colors.textPrimary },
-    verseNote: { fontFamily: fontFamily.serifItalic, fontSize: 15, lineHeight: 24, color: colors.textMuted },
-    versionChip: { minWidth: 62, height: 34, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 999, backgroundColor: colors.navy, paddingHorizontal: 12, marginRight: 8 },
+    tapHint: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textMuted, marginBottom: 14 },
+    verseRow: { flexDirection: "row", marginBottom: 4, paddingVertical: 4, paddingRight: 6, marginLeft: -9, paddingLeft: 6, borderLeftWidth: 3, borderLeftColor: "transparent", borderRadius: 10 },
+    verseFocused: { borderLeftColor: colors.gold, backgroundColor: colors.verseBg },
+    paragraphFocused: { backgroundColor: colors.verseBg },
+    verseGutter: { width: numberSize * 2 + 8, alignItems: "flex-start", paddingTop: Math.max(0, (lineHeight - numberSize) / 2 - 2), gap: 3 },
+    verseGutterText: { fontFamily: fontFamily.sansExtraBold, fontSize: numberSize, color: colors.gold },
+    verseBody: { flex: 1, fontFamily: bodyFont, fontSize: size, lineHeight, color: colors.textPrimary },
+    verseNote: { fontFamily: noteFont, fontStyle: "italic", fontSize: Math.round(size * 0.85), lineHeight: Math.round(lineHeight * 0.85), color: colors.textMuted },
+    headerRight: { flexDirection: "row", alignItems: "center", gap: 8, marginRight: 8 },
+    settingsButton: { minWidth: 44, height: 34, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10 },
+    settingsButtonText: { fontFamily: fontFamily.serifBold, fontSize: 14, color: colors.textPrimary },
+    versionChip: { minWidth: 62, height: 34, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 999, backgroundColor: colors.navy, paddingHorizontal: 12 },
     versionChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.white },
     translationLabel: {
       fontFamily: fontFamily.sansExtraBold,
@@ -287,8 +418,8 @@ function makeStyles(colors: ColorPalette) {
       color: colors.gold,
       flex: 1,
     },
-    chapterText: { fontFamily: fontFamily.serifRegular, fontSize: 17, lineHeight: 32, color: colors.textPrimary },
-    verseNumber: { fontFamily: fontFamily.sansExtraBold, fontSize: 11, color: colors.gold },
+    chapterText: { fontFamily: bodyFont, fontSize: size, lineHeight: Math.round(lineHeight * 1.05), color: colors.textPrimary },
+    verseNumber: { fontFamily: fontFamily.sansExtraBold, fontSize: numberSize, color: colors.gold },
     navRow: {
       flexDirection: "row",
       borderTopWidth: 1,

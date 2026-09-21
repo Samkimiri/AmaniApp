@@ -114,25 +114,25 @@ export function noteToHtml(note: SermonNote): string {
   const meta = [note.church, note.preacher, note.date].filter(Boolean).join(" &middot; ");
   const tagsLine =
     note.tags && note.tags.length > 0
-      ? `<div style="margin-top:4px;font-size:11px;color:#B8860B;">${note.tags.map((t) => `#${escapeHtml(t)}`).join("&nbsp;&nbsp;")}</div>`
+      ? `<div style="margin-top:8px;font-size:17px;color:#8A5A00;">${note.tags.map((t) => `#${escapeHtml(t)}`).join("&nbsp;&nbsp;")}</div>`
       : "";
   const body = note.blocks
     .map((block) => {
       if (block.type === "text" && block.text.trim()) {
-        return `<p style="font-size:15px;line-height:1.7;color:#333B45;">${renderMarkdownLite(block.text)}</p>`;
+        return `<p style="font-size:22px;line-height:1.65;color:#1F2933;margin:0 0 14px;">${renderMarkdownLite(block.text)}</p>`;
       }
       if (block.type === "heading" && block.text.trim()) {
-        return `<h2 style="font-size:17px;font-weight:800;color:#182233;margin:22px 0 6px;">${escapeHtml(
+        return `<h2 style="font-size:26px;font-weight:800;color:#182233;margin:30px 0 8px;">${escapeHtml(
           block.text
         )}</h2>`;
       }
       if (block.type === "verse") {
         const c = getHighlightColor(block.color);
-        return `<blockquote style="background:${c.background};border-left:3px solid ${c.accent};margin:16px 0;padding:12px 16px;border-radius:8px;">
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:${c.accent};">${escapeHtml(
+        return `<blockquote style="background:${c.background};border-left:3px solid ${c.accent};margin:22px 0;padding:18px 22px;border-radius:10px;">
+          <div style="font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:${c.accent};">${escapeHtml(
             block.reference
           )}</div>
-          <div style="font-style:italic;font-size:15px;color:${c.text};margin-top:4px;">&ldquo;${escapeHtml(
+          <div style="font-style:italic;font-size:21px;line-height:1.55;color:${c.text};margin-top:6px;">&ldquo;${escapeHtml(
             block.text
           )}&rdquo;</div>
         </blockquote>`;
@@ -151,11 +151,11 @@ export function noteToHtml(note: SermonNote): string {
       }
       if (block.type === "audio") {
         const transcriptHtml = block.transcript
-          ? `<div style="margin-top:6px;font-size:13px;font-style:italic;color:#333B45;">${escapeHtml(
+          ? `<div style="margin-top:8px;font-size:19px;line-height:1.55;font-style:italic;color:#1F2933;">${escapeHtml(
               block.transcript
             )}</div>`
           : "";
-        return `<div style="margin:12px 0;padding:10px 14px;border:1px solid #ECE4D4;border-radius:8px;color:#5B6472;font-size:13px;">&#127911; Audio recording &middot; ${escapeHtml(
+        return `<div style="margin:18px 0;padding:14px 18px;border:1px solid #ECE4D4;border-radius:8px;color:#3E4856;font-size:18px;">&#127911; Audio recording &middot; ${escapeHtml(
           formatDuration(block.durationMillis)
         )}${transcriptHtml}</div>`;
       }
@@ -164,14 +164,14 @@ export function noteToHtml(note: SermonNote): string {
     .join("\n");
 
   return `<!doctype html>
-  <html><head><meta charset="utf-8" /></head>
-  <body style="font-family:-apple-system,Helvetica,Arial,sans-serif;padding:32px;color:#182233;">
-    <h1 style="font-size:22px;margin-bottom:4px;">${escapeHtml(note.title || "Untitled note")}</h1>
-    <div style="font-size:12px;color:#9AA3AE;">${meta}</div>
+  <html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+  <body style="font-family:Georgia,'Times New Roman',serif;padding:40px 44px;color:#182233;line-height:1.5;">
+    <h1 style="font-size:38px;line-height:1.2;margin:0 0 8px;">${escapeHtml(note.title || "Untitled note")}</h1>
+    <div style="font-size:18px;color:#4B5563;">${meta}</div>
     ${tagsLine}
     <div style="margin-bottom:20px;"></div>
     ${body}
-    <div style="margin-top:32px;font-size:11px;color:#B9C4D3;">Shared from Amani</div>
+    <div style="margin-top:44px;font-size:15px;color:#6B7280;">Shared from Amani</div>
   </body></html>`;
 }
 

@@ -34,6 +34,18 @@ export function OpenBookIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps
   );
 }
 
+export function CalendarIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Rect x={4} y={5.5} width={16} height={14.5} rx={2} />
+      <Line x1={4} y1={10} x2={20} y2={10} />
+      <Line x1={8.5} y1={3.5} x2={8.5} y2={7} />
+      <Line x1={15.5} y1={3.5} x2={15.5} y2={7} />
+      <Path d="m9.5 15 2 2 3.5-3.7" />
+    </Svg>
+  );
+}
+
 export function HomeIcon({ size, color = "#A6AEB8", strokeWidth }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>

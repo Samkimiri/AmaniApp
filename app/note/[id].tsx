@@ -46,6 +46,7 @@ import { notesStore } from "@/data/notesStore";
 import { persistRecording, resolvePlayableUri, resolvePlayableUriAsDataUrl } from "@/data/audioStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
 import { getNoteTemplate } from "@/data/noteTemplates";
+import { extractNoteReferences } from "@/lib/scriptureRefs";
 import { useAlert } from "@/context/AlertContext";
 import { useHint } from "@/hooks/useHint";
 import { HintBanner } from "@/components/HintBanner";
@@ -364,6 +365,10 @@ export default function NoteEditorScreen() {
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note]);
+
+  // Verses named in the typed text ("John 3:16") become tappable chips that
+  // open the reader at that verse. Re-scanned only when the text changes.
+  const scriptureRefs = useMemo(() => extractNoteReferences(note), [note.title, note.blocks, translationCode]);
 
   const verseSuggestions = useMemo<VerseResult[]>(
     () => (verseQuery.trim() ? getVerseCandidates(verseQuery, 4) : []),
@@ -807,6 +812,31 @@ export default function NoteEditorScreen() {
             </View>
           ) : null}
 
+          {scriptureRefs.length > 0 ? (
+            <View style={styles.scriptureRow}>
+              <Text style={styles.scriptureLabel}>Scripture in this note</Text>
+              <View style={styles.tagChipRow}>
+                {scriptureRefs.map((ref) => (
+                  <Pressable
+                    key={ref.label}
+                    style={styles.scriptureChip}
+                    onPress={() =>
+                      router.push(
+                        `/bible-read?book=${encodeURIComponent(ref.book)}&chapter=${ref.chapter}&verse=${ref.verse}${
+                          ref.endVerse ? `&endVerse=${ref.endVerse}` : ""
+                        }`
+                      )
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${ref.label} in the Bible`}
+                  >
+                    <Text style={styles.scriptureChipText}>{ref.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
           {note.blocks.map((block) => {
             if (block.type === "text") {
               return (
@@ -1167,6 +1197,24 @@ function makeStyles(colors: ColorPalette) {
     marginTop: -8,
   },
   tagChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  scriptureRow: { gap: 8 },
+  scriptureLabel: {
+    fontFamily: fontFamily.sansExtraBold,
+    fontSize: 10.5,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: colors.textMuted,
+  },
+  scriptureChip: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    height: 30,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.gold,
+    backgroundColor: colors.card,
+  },
+  scriptureChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.textPrimary },
   tagChip: {
     flexDirection: "row",
     alignItems: "center",
