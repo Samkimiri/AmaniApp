@@ -65,17 +65,17 @@ const KJV: BibleData = kjvRaw as unknown as BibleData;
 
 // Known ahead of time so the picker UI can show translation names before
 // the (lazily-loaded) translation data itself has ever been fetched.
-const TRANSLATION_META: Record<TranslationCode, { name: string; license: string }> = {
-  KJV: { name: KJV.name, license: KJV.license },
-  WEB: { name: "World English Bible", license: "Public domain" },
-  ASV: { name: "American Standard Version", license: "Public domain" },
-  DARBY: { name: "Darby Translation", license: "Public domain" },
-  YLT: { name: "Young's Literal Translation", license: "Public domain" },
+const TRANSLATION_META: Record<TranslationCode, { name: string; license: string; description: string }> = {
+  KJV: { name: KJV.name, license: KJV.license, description: "1611 · Classic, traditional English" },
+  WEB: { name: "World English Bible", license: "Public domain", description: "Modern English · Easy to read" },
+  ASV: { name: "American Standard Version", license: "Public domain", description: "1901 · Literal, word-for-word" },
+  DARBY: { name: "Darby Translation", license: "Public domain", description: "1890 · Literal, by J. N. Darby" },
+  YLT: { name: "Young's Literal Translation", license: "Public domain", description: "1898 · Strictly literal, by Robert Young" },
 };
 
-export const AVAILABLE_TRANSLATIONS: { code: TranslationCode; name: string }[] = (
+export const AVAILABLE_TRANSLATIONS: { code: TranslationCode; name: string; description: string }[] = (
   Object.keys(TRANSLATION_META) as TranslationCode[]
-).map((code) => ({ code, name: TRANSLATION_META[code].name }));
+).map((code) => ({ code, name: TRANSLATION_META[code].name, description: TRANSLATION_META[code].description }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const webAssetModule = require("./bundled/web.bibledata");

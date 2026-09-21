@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ColorPalette } from "@/theme/colors";
@@ -7,15 +7,12 @@ import { useColors, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, OpenBookIcon, PlusIcon } from "@/components/icons";
 import {
-  AVAILABLE_TRANSLATIONS,
   ensureCrossReferencesLoaded,
   getCrossReferences,
   getVerse,
   getVerseCandidates,
   searchKeyword,
-  setActiveTranslation,
   TRANSLATION,
-  TranslationCode,
   useActiveTranslation,
   VerseResult,
 } from "@/data/bible";
@@ -24,6 +21,7 @@ import { bookmarks, highlights, VerseMark } from "@/data/verseMarks";
 import { newId, SermonNote } from "@/types/note";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { BibleBrowser, ContinueReadingCard } from "@/components/BibleBrowser";
+import { TranslationPicker } from "@/components/TranslationPicker";
 import { getHighlightColor } from "@/theme/highlightColors";
 
 const DEFAULT_VERSE: VerseResult = {
@@ -44,21 +42,10 @@ export default function BibleScreen() {
   const [savedBookmarks, setSavedBookmarks] = useState<VerseMark[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const translationCode = useActiveTranslation();
-  const [switchingTranslation, setSwitchingTranslation] = useState(false);
   const [translationPickerOpen, setTranslationPickerOpen] = useState(false);
   const colors = useColors();
   const textStyles = useTextStyles();
   const styles = makeStyles(colors);
-
-  async function chooseTranslation(code: TranslationCode) {
-    setTranslationPickerOpen(false);
-    if (code === translationCode) return;
-    // The very first switch to a not-yet-used translation reads and
-    // parses a multi-MB file, so this isn't always instant.
-    setSwitchingTranslation(true);
-    await setActiveTranslation(code);
-    setSwitchingTranslation(false);
-  }
 
   // Re-fetch the currently viewed verse's text when the translation
   // changes, rather than resetting back to the default verse.
@@ -158,43 +145,17 @@ export default function BibleScreen() {
       <View style={styles.header}>
         <Text style={textStyles.screenTitle}>Bible</Text>
         <Pressable
-          style={[styles.translationBadge, switchingTranslation && { opacity: 0.6 }]}
+          style={styles.translationBadge}
           onPress={() => setTranslationPickerOpen(true)}
-          disabled={switchingTranslation}
           accessibilityRole="button"
           accessibilityLabel={`Choose Bible translation, currently ${TRANSLATION.code}`}
         >
-          <Text style={styles.translationText}>{switchingTranslation ? "Loading…" : TRANSLATION.code}</Text>
-          {switchingTranslation ? null : <ChevronDownIcon size={12} strokeWidth={3} />}
+          <Text style={styles.translationText}>{TRANSLATION.code}</Text>
+          <ChevronDownIcon size={12} strokeWidth={3} />
         </Pressable>
       </View>
 
-      <Modal
-        visible={translationPickerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setTranslationPickerOpen(false)}
-      >
-        <Pressable style={styles.pickerScrim} onPress={() => setTranslationPickerOpen(false)} />
-        <View style={styles.pickerSheet}>
-          <Text style={styles.pickerTitle}>Choose a translation</Text>
-          {AVAILABLE_TRANSLATIONS.map((t) => (
-            <Pressable
-              key={t.code}
-              style={styles.pickerRow}
-              onPress={() => chooseTranslation(t.code)}
-              accessibilityRole="button"
-              accessibilityLabel={`${t.name} (${t.code})`}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.pickerRowName}>{t.name}</Text>
-                <Text style={styles.pickerRowCode}>{t.code}</Text>
-              </View>
-              {translationCode === t.code ? <Text style={styles.pickerCheck}>&#10003;</Text> : null}
-            </Pressable>
-          ))}
-        </View>
-      </Modal>
+      <TranslationPicker visible={translationPickerOpen} onClose={() => setTranslationPickerOpen(false)} />
 
       <View style={styles.searchBar}>
         <SearchIcon size={16} color={colors.textMuted} />
@@ -361,27 +322,6 @@ function makeStyles(colors: ColorPalette) {
     justifyContent: "center",
   },
   actionButtonPressed: { opacity: 0.6 },
-  pickerScrim: { flex: 1, backgroundColor: colors.scrim },
-  pickerSheet: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 34,
-  },
-  pickerTitle: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary, marginBottom: 10 },
-  pickerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    gap: 10,
-  },
-  pickerRowName: { fontFamily: fontFamily.sansBold, fontSize: 14.5, color: colors.textPrimary },
-  pickerRowCode: { fontFamily: fontFamily.sansMedium, fontSize: 12, color: colors.textMuted, marginTop: 1 },
-  pickerCheck: { fontFamily: fontFamily.sansExtraBold, fontSize: 16, color: colors.gold },
   translationText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.white },
   searchBar: {
     marginHorizontal: 24,
