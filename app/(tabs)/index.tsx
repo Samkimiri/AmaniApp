@@ -20,6 +20,7 @@ import { useAlert } from "@/context/AlertContext";
 import { NOTE_TEMPLATES } from "@/data/noteTemplates";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { OnboardingModal } from "@/components/OnboardingModal";
+import { ContinueReadingCard } from "@/components/BibleBrowser";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -94,6 +95,10 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
+        <View style={{ marginTop: 14 }}>
+          <ContinueReadingCard />
+        </View>
+
         <PrimaryButton
           label="New sermon note"
           icon={<PlusIcon size={18} />}
@@ -121,15 +126,19 @@ export default function HomeScreen() {
             style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
             onPress={() => router.push("/bible")}
           >
-            <OpenBookIcon size={20} color={colors.navy} />
+            <View style={styles.tileIcon}>
+              <OpenBookIcon size={20} color={colors.navy} />
+            </View>
             <Text style={styles.tileTitle}>Bible</Text>
-            <Text style={styles.tileSubtitle}>Read offline</Text>
+            <Text style={styles.tileSubtitle}>All 66 books, offline</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
             onPress={() => router.push("/notes")}
           >
-            <NotesIcon size={20} color={colors.navy} />
+            <View style={styles.tileIcon}>
+              <NotesIcon size={20} color={colors.navy} />
+            </View>
             <Text style={styles.tileTitle}>All notes</Text>
             <Text style={styles.tileSubtitle}>{notes.length} saved</Text>
           </Pressable>
@@ -203,11 +212,24 @@ function makeStyles(colors: ColorPalette) {
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
+      borderRadius: 16,
       padding: 16,
       gap: 10,
+      shadowColor: "#000",
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 1,
     },
     tilePressed: { opacity: 0.7 },
+    tileIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: colors.verseBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     tileTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
     tileSubtitle: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },
     pickerScrim: { flex: 1, backgroundColor: colors.scrim },

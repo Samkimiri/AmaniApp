@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,6 +7,7 @@ import { useColors, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@/components/icons";
 import { BOOKS, chapterCount, getChapter, TRANSLATION, useActiveTranslation } from "@/data/bible";
+import { saveReadingPosition } from "@/data/readingProgress";
 
 /**
  * A continuous, chapter-at-a-time reading view — distinct from the Bible
@@ -22,6 +23,7 @@ export default function BibleReadScreen() {
     const n = Number(params.chapter);
     return Number.isFinite(n) && n > 0 ? n : 1;
   });
+  const scrollRef = useRef<ScrollView>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerBook, setPickerBook] = useState<string | null>(null);
   const translationCode = useActiveTranslation();
@@ -30,6 +32,11 @@ export default function BibleReadScreen() {
   const styles = makeStyles(colors);
 
   const verses = useMemo(() => getChapter(book, chapter), [book, chapter, translationCode]);
+  useEffect(() => {
+    saveReadingPosition({ book, chapter });
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [book, chapter]);
+
   const totalChapters = chapterCount(book);
   const bookIndex = BOOKS.indexOf(book);
 
@@ -87,7 +94,10 @@ export default function BibleReadScreen() {
         <View style={styles.headerButton} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.bookHeading}>{book}</Text>
+        <Text style={styles.chapterHeading}>Chapter {chapter}</Text>
+        <View style={styles.headingRule} />
         <Text style={styles.translationLabel}>{TRANSLATION.name}</Text>
         <Text style={styles.chapterText}>
           {verses.map((v) => (
@@ -194,6 +204,9 @@ function makeStyles(colors: ColorPalette) {
     titleButton: { flexDirection: "row", alignItems: "center", gap: 6 },
     titleText: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary },
     content: { paddingHorizontal: 24, paddingBottom: 40 },
+    bookHeading: { fontFamily: fontFamily.sansExtraBold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: colors.gold, marginTop: 6 },
+    chapterHeading: { fontFamily: fontFamily.serifBold, fontSize: 34, color: colors.textPrimary, marginTop: 2 },
+    headingRule: { width: 44, height: 3, borderRadius: 2, backgroundColor: colors.gold, marginTop: 12, marginBottom: 16 },
     translationLabel: {
       fontFamily: fontFamily.sansExtraBold,
       fontSize: 11,
@@ -202,7 +215,7 @@ function makeStyles(colors: ColorPalette) {
       color: colors.gold,
       marginBottom: 14,
     },
-    chapterText: { fontFamily: fontFamily.serifRegular, fontSize: 17, lineHeight: 30, color: colors.textPrimary },
+    chapterText: { fontFamily: fontFamily.serifRegular, fontSize: 17, lineHeight: 32, color: colors.textPrimary },
     verseNumber: { fontFamily: fontFamily.sansExtraBold, fontSize: 11, color: colors.gold },
     navRow: {
       flexDirection: "row",
