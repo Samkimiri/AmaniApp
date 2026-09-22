@@ -48,7 +48,7 @@ export const lightColors: ColorPalette = {
   gold: "#8A6208",
   goldLight: "#D9B75C",
 
-  background: "#FBF8F4",
+  background: "#FFFFFF",
   card: "#FFFFFF",
   border: "#ECE4D4",
   borderLight: "#F1EEE5",
