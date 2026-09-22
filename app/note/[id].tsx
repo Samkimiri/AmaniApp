@@ -39,6 +39,7 @@ import {
   UndoIcon,
 } from "@/components/icons";
 import { VerseCallout } from "@/components/VerseCallout";
+import { MarkdownPreview } from "@/components/MarkdownPreview";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { SwipeToDelete } from "@/components/SwipeToDelete";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
@@ -158,6 +159,45 @@ export default function NoteEditorScreen() {
   // otherwise lose the selection.
   const [activeTextBlockId, setActiveTextBlockId] = useState<string | null>(null);
   const selections = useRef<Record<string, { start: number; end: number }>>({});
+
+  // Which text block is *currently* focused, as opposed to `activeTextBlockId`
+  // above (which deliberately keeps pointing at the last-focused block even
+  // after it blurs, so the formatting buttons don't disappear the instant
+  // you tap one). A plain TextInput can only show one uniform style for its
+  // whole value, so it can't display "**bold**" as actually bold while
+  // you're typing it — every block that ISN'T this one instead renders
+  // through MarkdownPreview, which turns the stored **bold**/*italic*/
+  // ==highlight==/bullet markup into real styled text, the same as the
+  // PDF export already does. Debounced the same 80ms as handleTypingBlur,
+  // so clicking a formatting button (which blurs then immediately
+  // refocuses the same input) doesn't flash it over to the rendered
+  // preview and back.
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const blockBlurTimer = useRef<ReturnType<typeof setTimeout>>();
+  // Set right before swapping a block from its rendered preview back to an
+  // editable TextInput (tapping a paragraph to edit it) — the input doesn't
+  // exist yet at the moment of the tap, so this tells its ref callback to
+  // focus it (and place the cursor at the end) the instant it mounts.
+  const pendingFocusBlockId = useRef<string | null>(null);
+
+  function handleBlockFocus(blockId: string) {
+    if (blockBlurTimer.current) clearTimeout(blockBlurTimer.current);
+    handleTypingFocus();
+    setActiveTextBlockId(blockId);
+    setFocusedBlockId(blockId);
+  }
+
+  function handleBlockBlur() {
+    handleTypingBlur();
+    blockBlurTimer.current = setTimeout(() => setFocusedBlockId(null), 80);
+  }
+
+  function startEditingBlock(blockId: string, textLength: number) {
+    pendingFocusBlockId.current = blockId;
+    setActiveTextBlockId(blockId);
+    setFocusedBlockId(blockId);
+    setPendingSelection({ blockId, pos: textLength });
+  }
   // On web, tapping any other element (a formatting button included) blurs
   // whatever <textarea> currently has focus — standard DOM behavior, not a
   // bug in this app, but it used to mean every tap on Bold/Italic/Bullet
@@ -1030,19 +1070,37 @@ export default function NoteEditorScreen() {
 
           {note.blocks.map((block) => {
             if (block.type === "text") {
+              // An empty block has nothing to render as a preview and needs
+              // to be an obvious place to tap and start typing, so it's
+              // always shown as the live input rather than ever swapping to
+              // MarkdownPreview.
+              const isEditing = focusedBlockId === block.id || !block.text.trim();
+              if (!isEditing) {
+                return (
+                  <Pressable
+                    key={block.id}
+                    onPress={() => startEditingBlock(block.id, block.text.length)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit this paragraph"
+                  >
+                    <MarkdownPreview text={block.text} style={styles.bodyInput} />
+                  </Pressable>
+                );
+              }
               return (
                 <TextInput
                   key={block.id}
                   ref={(el) => {
                     textInputRefs.current[block.id] = el;
+                    if (pendingFocusBlockId.current === block.id && el) {
+                      el.focus();
+                      pendingFocusBlockId.current = null;
+                    }
                   }}
                   value={block.text}
                   onChangeText={(text) => updateTextBlock(block.id, text)}
-                  onFocus={() => {
-                    handleTypingFocus();
-                    setActiveTextBlockId(block.id);
-                  }}
-                  onBlur={handleTypingBlur}
+                  onFocus={() => handleBlockFocus(block.id)}
+                  onBlur={handleBlockBlur}
                   onSelectionChange={(e) => {
                     selections.current[block.id] = e.nativeEvent.selection;
                   }}
