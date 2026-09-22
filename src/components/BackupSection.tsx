@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -18,7 +18,7 @@ export function BackupSection() {
   const showAlert = useAlert();
   const showToast = useToast();
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   async function handleExport() {
     try {

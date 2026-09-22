@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -9,7 +9,7 @@ import { CloseIcon } from "./icons";
  * only ever shows once per device. */
 export function HintBanner({ text, onDismiss }: { text: string; onDismiss: () => void }) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.wrap}>
       <Text style={styles.text}>{text}</Text>

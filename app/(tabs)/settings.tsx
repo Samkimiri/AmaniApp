@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -30,7 +30,7 @@ export default function SettingsScreen() {
   const colors = useColors();
   const textStyles = useTextStyles();
   const { mode, setMode } = useTheme();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   async function chooseTranslation(code: TranslationCode) {
     if (code === translationCode) return;

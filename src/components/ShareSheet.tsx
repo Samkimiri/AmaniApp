@@ -82,7 +82,7 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
   const showAlert = useAlert();
   const showToast = useToast();
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const verseOptions = useMemo(() => verseOptionsFor(note), [note]);
   const [selectedVerseId, setSelectedVerseId] = useState<string | undefined>(verseOptions[0]?.block.id);
@@ -321,7 +321,7 @@ function Row({
   destructive?: boolean;
 }) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <Pressable
       onPress={onPress}

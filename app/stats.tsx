@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -26,7 +26,7 @@ interface Stats {
  * new is sent or tracked to produce it. */
 export default function StatsScreen() {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const progress = useReadingProgress();
   const [stats, setStats] = useState<Stats | null>(null);
 

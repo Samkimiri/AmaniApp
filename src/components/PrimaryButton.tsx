@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -16,7 +16,7 @@ export function PrimaryButton({
   style?: ViewStyle;
 }) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <Pressable
       onPress={onPress}

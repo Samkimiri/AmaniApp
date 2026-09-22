@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { ColorPalette, lightColors } from "@/theme/colors";
@@ -20,7 +20,7 @@ function openChapter(book: string, chapter: number) {
  * left off, or starts at Genesis 1 for a first-time reader. */
 export function ContinueReadingCard() {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const position = useReadingPosition();
   const book = position?.book ?? BOOKS[0];
   const chapter = position?.chapter ?? 1;
@@ -48,7 +48,7 @@ export function ContinueReadingCard() {
 
 function BookGroup({ title, books }: { title: string; books: string[] }) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={{ marginTop: 22 }}>
       <Text style={styles.groupTitle}>{title}</Text>

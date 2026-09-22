@@ -39,7 +39,7 @@ export default function NotesScreen() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const colors = useColors();
   const textStyles = useTextStyles();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();

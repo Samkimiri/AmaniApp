@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { ColorPalette } from "@/theme/colors";
@@ -12,7 +12,7 @@ import { CardsIcon, ChevronRightIcon } from "./icons";
  * practice, so it never shows an empty promise. */
 export function MemorizeCard() {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {

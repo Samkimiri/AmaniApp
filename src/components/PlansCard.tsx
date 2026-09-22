@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { ColorPalette } from "@/theme/colors";
@@ -19,7 +19,7 @@ import { CalendarIcon, ChevronRightIcon } from "./icons";
  * reading streak, or an invitation to start one. */
 export function PlansCard() {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const progress = useReadingProgress();
   const plans = getReadingPlans();
   const streak = currentStreak(allCompletionDates(progress));

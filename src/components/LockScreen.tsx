@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ColorPalette } from "@/theme/colors";
@@ -14,7 +14,7 @@ export function LockScreen({ onUnlock }: { onUnlock: (pin: string) => Promise<bo
   const [checking, setChecking] = useState(false);
   const shake = useRef(new Animated.Value(0)).current;
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useEffect(() => {
     if (value.length < 4 || checking) return;

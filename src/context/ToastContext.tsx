@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useRef, useState, type PropsWithChildren } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import { Animated, StyleSheet, Text } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "./ThemeContext";
@@ -24,7 +24,7 @@ export function ToastProvider({ children }: PropsWithChildren) {
   const opacity = useRef(new Animated.Value(0)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const show = useCallback(
     (text: string) => {

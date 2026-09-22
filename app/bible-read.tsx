@@ -100,7 +100,10 @@ export default function BibleReadScreen() {
   const [bookmarkSet, setBookmarkSet] = useState<Set<string>>(new Set());
   const translationCode = useActiveTranslation();
   const colors = useColors();
-  const styles = makeStyles(colors, settings);
+  // Re-renders on every verse tap, highlight/bookmark change, and scroll
+  // measurement — only actually needs recomputing when the theme or
+  // reading settings change.
+  const styles = useMemo(() => makeStyles(colors, settings), [colors, settings]);
 
   const refreshMarks = useCallback(() => {
     highlights.getAll().then((list) => setHighlightMap(Object.fromEntries(list.map((m) => [m.reference, m.color]))));

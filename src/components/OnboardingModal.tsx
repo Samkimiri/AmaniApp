@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -39,7 +39,7 @@ const STEPS: Step[] = [
 export function OnboardingModal({ visible, onComplete }: { visible: boolean; onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
 

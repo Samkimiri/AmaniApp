@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -22,7 +22,7 @@ export function AppLockSection() {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   function closeModal() {
     setStep(null);

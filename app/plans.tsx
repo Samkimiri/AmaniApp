@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -37,7 +37,7 @@ export default function PlansScreen() {
     params.plan && plans.some((p) => p.id === params.plan) ? params.plan : null
   );
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const progress = useReadingProgress();
   const showAlert = useAlert();
   const streak = currentStreak(allCompletionDates(progress));

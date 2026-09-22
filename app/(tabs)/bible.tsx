@@ -47,7 +47,7 @@ export default function BibleScreen() {
   const [translationPickerOpen, setTranslationPickerOpen] = useState(false);
   const colors = useColors();
   const textStyles = useTextStyles();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   // Re-fetch the currently viewed verse's text when the translation
   // changes, rather than resetting back to the default verse.

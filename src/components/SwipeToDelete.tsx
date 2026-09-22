@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { Animated, PanResponder, StyleSheet, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -30,7 +30,7 @@ export function SwipeToDelete({
 }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const panResponder = useRef(
     PanResponder.create({

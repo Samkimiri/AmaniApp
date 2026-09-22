@@ -30,7 +30,7 @@ function shuffle<T>(items: T[]): T[] {
  * beyond the bookmarks/highlights that already exist. */
 export default function MemorizeScreen() {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [deck, setDeck] = useState<Card[] | null>(null);
   const [queue, setQueue] = useState<Card[]>([]);
   const [flipped, setFlipped] = useState(false);

@@ -1,4 +1,4 @@
-import React, { Component, type ErrorInfo, type PropsWithChildren } from "react";
+import React, { Component, useMemo, type ErrorInfo, type PropsWithChildren } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ColorPalette } from "@/theme/colors";
@@ -16,7 +16,7 @@ interface State {
  * which can't call hooks directly. */
 function ErrorFallback({ onReset }: { onReset: () => void }) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.content}>

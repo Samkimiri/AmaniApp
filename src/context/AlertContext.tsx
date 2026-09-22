@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState, type PropsWithChildren } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useState, type PropsWithChildren } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "./ThemeContext";
@@ -34,7 +34,7 @@ const AlertContext = createContext<AlertContextValue | null>(null);
 export function AlertProvider({ children }: PropsWithChildren) {
   const [options, setOptions] = useState<AlertOptions | null>(null);
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const show = useCallback((opts: AlertOptions) => setOptions(opts), []);
   const close = useCallback(() => setOptions(null), []);

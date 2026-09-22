@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
@@ -46,7 +46,7 @@ const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
  */
 export function GoogleDriveSection() {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const showAlert = useAlert();
   const showToast = useToast();
   const [accessToken, setAccessToken] = useState<string | null>(null);

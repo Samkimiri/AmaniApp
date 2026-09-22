@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Tabs } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
 import { ColorPalette } from "@/theme/colors";
@@ -33,7 +33,7 @@ function TabIcon({
 
 export default function TabsLayout() {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
     <Tabs

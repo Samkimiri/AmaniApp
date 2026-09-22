@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import ViewShot from "react-native-view-shot";
 import * as Clipboard from "expo-clipboard";
@@ -29,7 +29,7 @@ interface Props {
  * from it. Everything works offline and saves on this device only. */
 export function VerseActionSheet({ verse, onClose, onChanged }: Props) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const showToast = useToast();
   const showAlert = useAlert();
   const shotRef = useRef<ViewShot>(null);

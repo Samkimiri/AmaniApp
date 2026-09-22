@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -19,7 +19,7 @@ import {
  * itself once the switch has actually completed. */
 export function TranslationPicker({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const showAlert = useAlert();
   const active = useActiveTranslation();
   const [loading, setLoading] = useState<TranslationCode | null>(null);

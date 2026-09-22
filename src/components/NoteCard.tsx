@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -6,7 +6,7 @@ import { fontFamily } from "@/theme/typography";
 import { OpenBookIcon, WaveformIcon } from "./icons";
 import { firstAudioBlock, firstVerseBlock, formatDuration, SermonNote } from "@/types/note";
 
-export function NoteCard({
+export const NoteCard = React.memo(function NoteCard({
   note,
   onPress,
   onLongPress,
@@ -16,7 +16,7 @@ export function NoteCard({
   onLongPress?: () => void;
 }) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const verse = firstVerseBlock(note);
   const audio = firstAudioBlock(note);
   const previewBlock = note.blocks.find(
@@ -61,7 +61,7 @@ export function NoteCard({
       ) : null}
     </Pressable>
   );
-}
+});
 
 function makeStyles(colors: ColorPalette) {
   return StyleSheet.create({

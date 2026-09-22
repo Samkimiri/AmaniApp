@@ -48,7 +48,7 @@ import { notesStore } from "@/data/notesStore";
 import { persistRecording, resolvePlayableUri, resolvePlayableUriAsDataUrl } from "@/data/audioStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
 import { getNoteTemplate } from "@/data/noteTemplates";
-import { extractNoteReferences } from "@/lib/scriptureRefs";
+import { extractNoteReferences, ScriptureRef } from "@/lib/scriptureRefs";
 import { useAlert } from "@/context/AlertContext";
 import { useHint } from "@/hooks/useHint";
 import { HintBanner } from "@/components/HintBanner";
@@ -93,7 +93,12 @@ export default function NoteEditorScreen() {
   const isNew = id === "new";
   const translationCode = useActiveTranslation();
   const colors = useColors();
-  const styles = makeStyles(colors);
+  // makeStyles builds a large StyleSheet object graph; this screen
+  // re-renders on every keystroke (typing, autosave state, undo history),
+  // so recomputing it unconditionally every time was wasted work on every
+  // single character typed. It only actually needs to change when the
+  // theme does.
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [note, setNote] = useState<SermonNote>(() => emptyNote(isNew ? newId() : id, template));
   // expo-router's query params aren't always available on the very first
   // render on web (they can resolve a tick after mount), so the ?template=
@@ -425,8 +430,17 @@ export default function NoteEditorScreen() {
   }, [note]);
 
   // Verses named in the typed text ("John 3:16") become tappable chips that
-  // open the reader at that verse. Re-scanned only when the text changes.
-  const scriptureRefs = useMemo(() => extractNoteReferences(note), [note.title, note.blocks, translationCode]);
+  // open the reader at that verse. `note.blocks` gets a new array identity
+  // on every keystroke (immutable updates), so tying this scan directly to
+  // it would re-run the full regex-and-lookup pass on every single
+  // character typed anywhere in the note. Debounced the same way autosave
+  // and undo history already are, so it only runs once typing pauses.
+  const [scriptureRefs, setScriptureRefs] = useState<ScriptureRef[]>([]);
+  useEffect(() => {
+    const timer = setTimeout(() => setScriptureRefs(extractNoteReferences(note)), 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.title, note.blocks, translationCode]);
 
   const verseSuggestions = useMemo<VerseResult[]>(
     () => (verseQuery.trim() ? getVerseCandidates(verseQuery, 4) : []),

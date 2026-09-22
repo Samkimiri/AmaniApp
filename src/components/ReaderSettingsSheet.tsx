@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
@@ -36,7 +36,7 @@ const LAYOUTS: { id: ReaderLayout; label: string }[] = [
  * and layout. Changes apply live behind the sheet and are remembered. */
 export function ReaderSettingsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const colors = useColors();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const settings = useReaderSettings();
 
   return (

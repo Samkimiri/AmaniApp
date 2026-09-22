@@ -41,7 +41,7 @@ export default function HomeScreen() {
   });
   const colors = useColors();
   const textStyles = useTextStyles();
-  const styles = makeStyles(colors);
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const shotRef = useRef<ViewShot>(null);
   const [sharingVerse, setSharingVerse] = useState(false);
