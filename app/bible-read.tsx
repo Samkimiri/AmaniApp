@@ -115,28 +115,56 @@ export default function BibleReadScreen() {
     updateReaderSettings({ layout: next });
   }
 
-  // Read the chapter aloud with the device's own text-to-speech (no
-  // audio files shipped, works fully offline). Stops automatically if the
-  // reader navigates elsewhere or unmounts, so it never keeps talking
-  // over a chapter no longer on screen.
+  // Read the chapter aloud with the device's own text-to-speech (no audio
+  // files shipped, works fully offline).
+  //
+  // Two separate problems, found by actually testing this rather than
+  // trusting the API docs:
+  //
+  // 1. The whole chapter as one utterance silently stopped partway through
+  //    on long chapters (Psalm 119's 176 verses, ~13,000 characters) —
+  //    most speech engines, browsers especially, cut off a very long
+  //    utterance rather than erroring, which read as "some chapters just
+  //    don't play" even though every chapter's text is present.
+  //
+  // 2. The natural fix — split into one utterance per verse and chain
+  //    them via each call's `onDone` callback — doesn't work on web:
+  //    expo-speech's web implementation fires its completion event on a
+  //    different event bus than the one it listens on, so `onDone` and
+  //    onError never fire there at all (confirmed by testing directly,
+  //    not by reading the source). Chaining through onDone would just
+  //    read the first verse and stop.
+  //
+  // The fix that sidesteps both: queue every verse as its own utterance
+  // up front. Speech engines — the browser's speechSynthesis included —
+  // already keep an internal queue and play consecutively-queued
+  // utterances back to back without needing to be told to advance, so
+  // this never depends on a per-utterance completion callback firing at
+  // all. "Still speaking" is tracked by polling `Speech.isSpeakingAsync()`
+  // (a direct, synchronous-style query of the engine's real state, not
+  // routed through the broken event bridge) rather than waiting for a
+  // callback that may never come.
   function toggleSpeech() {
     if (speaking) {
       Speech.stop();
       setSpeaking(false);
       return;
     }
-    const text = verses
-      .filter((v) => !v.text.startsWith("["))
-      .map((v) => v.text)
-      .join(" ");
-    if (!text) return;
+    const verseTexts = verses.filter((v) => !v.text.startsWith("[")).map((v) => v.text);
+    if (verseTexts.length === 0) return;
     setSpeaking(true);
-    Speech.speak(`${book}, chapter ${chapter}. ${text}`, {
-      onDone: () => setSpeaking(false),
-      onStopped: () => setSpeaking(false),
-      onError: () => setSpeaking(false),
-    });
+    Speech.speak(`${book}, chapter ${chapter}.`);
+    for (const text of verseTexts) Speech.speak(text);
   }
+
+  useEffect(() => {
+    if (!speaking) return;
+    const poll = setInterval(async () => {
+      const stillSpeaking = await Speech.isSpeakingAsync();
+      if (!stillSpeaking) setSpeaking(false);
+    }, 350);
+    return () => clearInterval(poll);
+  }, [speaking]);
 
   useEffect(() => {
     Speech.stop();

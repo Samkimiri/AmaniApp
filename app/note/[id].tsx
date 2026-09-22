@@ -24,6 +24,7 @@ import {
   CameraIcon,
   ChecklistIcon,
   ChevronLeftIcon,
+  ChevronRightIcon,
   CloseIcon,
   HeadingIcon,
   HighlightIcon,
@@ -121,6 +122,14 @@ export default function NoteEditorScreen() {
   const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const [shareOpen, setShareOpen] = useState(false);
+  // Whether the bottom toolbar has more buttons than fit on screen — see
+  // the fade/chevron hint rendered next to it below.
+  const [toolbarOverflow, setToolbarOverflow] = useState(false);
+  const toolbarContainerWidth = useRef(0);
+  const toolbarContentWidth = useRef(0);
+  function updateToolbarOverflow() {
+    setToolbarOverflow(toolbarContentWidth.current > toolbarContainerWidth.current + 1);
+  }
   const [focusMode, setFocusMode] = useState(false);
   // A short delay before actually leaving focus mode on blur, so tabbing
   // from one text field straight into another (e.g. title -> body) doesn't
@@ -158,8 +167,35 @@ export default function NoteEditorScreen() {
   // focus before the blur's 80ms exit timer (see handleTypingBlur) fires.
   const textInputRefs = useRef<Record<string, TextInput | null>>({});
 
+  // Forces the visible cursor to a specific spot right after a formatting
+  // button edits the text out from under it — the browser/native input
+  // has no way to know where the new cursor "should" be after we've
+  // spliced markers into the string, so without this it lands wherever
+  // focus() happens to leave it (often the very start). Cleared on the
+  // next tick so it doesn't fight normal typing afterward — see the
+  // `selection` prop below, which only applies while this is set.
+  const [pendingSelection, setPendingSelection] = useState<{ blockId: string; pos: number } | null>(null);
+  useEffect(() => {
+    if (!pendingSelection) return;
+    const t = setTimeout(() => setPendingSelection(null), 0);
+    return () => clearTimeout(t);
+  }, [pendingSelection]);
+
+  /** Records where a formatting edit left the cursor, both for the visible
+   * selection nudge above and — just as importantly — so the *next*
+   * formatting button reads a selection that matches the text as it now
+   * exists. Without this, clicking Bold then Highlight right after (with
+   * no click back into the text in between) applied the second marker at
+   * the old, now-wrong offsets, since the text had grown out from under
+   * the stale {start, end} left over from before the first edit. */
+  function setCursorAfterEdit(blockId: string, pos: number) {
+    selections.current[blockId] = { start: pos, end: pos };
+    setPendingSelection({ blockId, pos });
+  }
+
   function applyInlineFormat(blockId: string, marker: string) {
     const sel = selections.current[blockId] ?? { start: 0, end: 0 };
+    let newCursor = 0;
     setNote((n) => ({
       ...n,
       blocks: n.blocks.map((b) => {
@@ -169,24 +205,29 @@ export default function NoteEditorScreen() {
         const before = b.text.slice(0, start);
         const middle = b.text.slice(start, end) || "text";
         const after = b.text.slice(end);
+        newCursor = before.length + marker.length + middle.length + marker.length;
         return { ...b, text: `${before}${marker}${middle}${marker}${after}` };
       }),
     }));
+    setCursorAfterEdit(blockId, newCursor);
     textInputRefs.current[blockId]?.focus();
   }
 
   function applyBullet(blockId: string) {
     const sel = selections.current[blockId] ?? { start: 0, end: 0 };
+    const cursor = Math.min(sel.start, sel.end);
+    let newCursor = cursor;
     setNote((n) => ({
       ...n,
       blocks: n.blocks.map((b) => {
         if (b.id !== blockId || b.type !== "text") return b;
-        const cursor = Math.min(sel.start, sel.end);
         const lineStart = b.text.lastIndexOf("\n", Math.max(0, cursor - 1)) + 1;
         if (b.text.slice(lineStart, lineStart + 2) === "- ") return b; // already a bullet
+        newCursor = cursor + 2;
         return { ...b, text: b.text.slice(0, lineStart) + "- " + b.text.slice(lineStart) };
       }),
     }));
+    setCursorAfterEdit(blockId, newCursor);
     textInputRefs.current[blockId]?.focus();
   }
 
@@ -1005,6 +1046,11 @@ export default function NoteEditorScreen() {
                   onSelectionChange={(e) => {
                     selections.current[block.id] = e.nativeEvent.selection;
                   }}
+                  selection={
+                    pendingSelection?.blockId === block.id
+                      ? { start: pendingSelection.pos, end: pendingSelection.pos }
+                      : undefined
+                  }
                   onContentSizeChange={autoGrow(block.id, 26)}
                   placeholder="Start typing your notes…"
                   placeholderTextColor={colors.textFaint}
@@ -1240,96 +1286,127 @@ export default function NoteEditorScreen() {
 
         {!focusMode ? (
           <View style={styles.toolbar}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.toolbarScroll}
-            >
-              <Pressable
-                style={[styles.toolbarButton, !canUndo && styles.toolbarButtonDisabled]}
-                onPress={undo}
-                disabled={!canUndo}
-                accessibilityRole="button"
-                accessibilityLabel="Undo"
+            <View style={{ flex: 1 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.toolbarScroll}
+                scrollEventThrottle={16}
+                onLayout={(e) => {
+                  toolbarContainerWidth.current = e.nativeEvent.layout.width;
+                  updateToolbarOverflow();
+                }}
+                onContentSizeChange={(w) => {
+                  toolbarContentWidth.current = w;
+                  updateToolbarOverflow();
+                }}
+                onScroll={(e) => {
+                  const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+                  const atEnd = contentOffset.x + layoutMeasurement.width >= contentSize.width - 4;
+                  setToolbarOverflow(!atEnd && contentSize.width > layoutMeasurement.width);
+                }}
               >
-                <UndoIcon size={17} color={canUndo ? colors.textSecondary : colors.textFaint} />
-                <Text style={[styles.toolbarButtonLabel, !canUndo && styles.toolbarButtonLabelDisabled]}>Undo</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.toolbarButton, !canRedo && styles.toolbarButtonDisabled]}
-                onPress={redo}
-                disabled={!canRedo}
-                accessibilityRole="button"
-                accessibilityLabel="Redo"
-              >
-                <RedoIcon size={17} color={canRedo ? colors.textSecondary : colors.textFaint} />
-                <Text style={[styles.toolbarButtonLabel, !canRedo && styles.toolbarButtonLabelDisabled]}>Redo</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.toolbarButton,
-                  recording && styles.toolbarButtonRecording,
-                  !!dictatingBlockId && styles.toolbarButtonDisabled,
-                ]}
-                onPress={toggleRecording}
-                disabled={!!dictatingBlockId}
-                accessibilityRole="button"
-                accessibilityLabel={recording ? "Stop recording" : "Record audio"}
-              >
-                <MicIcon size={17} color={recording ? colors.white : colors.textSecondary} />
-                <Text style={[styles.toolbarButtonLabel, recording && styles.toolbarButtonLabelRecording]}>
-                  {recording ? "Stop" : "Record"}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={styles.toolbarButton}
-                onPress={addPhoto}
-                accessibilityRole="button"
-                accessibilityLabel="Add a photo"
-              >
-                <CameraIcon size={17} />
-                <Text style={styles.toolbarButtonLabel}>Photo</Text>
-              </Pressable>
-              <Pressable
-                style={styles.toolbarButton}
-                onPress={addHeading}
-                accessibilityRole="button"
-                accessibilityLabel="Add a subheading"
-              >
-                <HeadingIcon size={17} />
-                <Text style={styles.toolbarButtonLabel}>Heading</Text>
-              </Pressable>
-              <Pressable
-                style={styles.toolbarButton}
-                onPress={addChecklist}
-                accessibilityRole="button"
-                accessibilityLabel="Add a response checklist"
-              >
-                <ChecklistIcon size={17} />
-                <Text style={styles.toolbarButtonLabel}>Checklist</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
-                onPress={() => setVerseBarOpen((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel="Insert a Bible verse"
-              >
-                <OpenBookIcon size={17} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
-                <Text style={[styles.toolbarButtonLabel, verseBarOpen && styles.toolbarButtonLabelActive]}>
-                  Verse
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.toolbarButton, tagBarOpen && styles.toolbarButtonActive]}
-                onPress={() => setTagBarOpen((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel="Tags"
-              >
-                <TagIcon size={17} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
-                <Text style={[styles.toolbarButtonLabel, tagBarOpen && styles.toolbarButtonLabelActive]}>Tags</Text>
-              </Pressable>
-            </ScrollView>
+                {/* Ordered by how often each is reached for while actively taking
+                    notes — the content-adding buttons first, since on a narrow
+                    phone the row scrolls and these are the ones worth seeing
+                    without having to discover that it scrolls at all. Undo/Redo
+                    are reached for only after a mistake, so they're fine at the
+                    end. */}
+                <Pressable
+                  style={[
+                    styles.toolbarButton,
+                    recording && styles.toolbarButtonRecording,
+                    !!dictatingBlockId && styles.toolbarButtonDisabled,
+                  ]}
+                  onPress={toggleRecording}
+                  disabled={!!dictatingBlockId}
+                  accessibilityRole="button"
+                  accessibilityLabel={recording ? "Stop recording" : "Record audio"}
+                >
+                  <MicIcon size={17} color={recording ? colors.white : colors.textSecondary} />
+                  <Text style={[styles.toolbarButtonLabel, recording && styles.toolbarButtonLabelRecording]}>
+                    {recording ? "Stop" : "Record"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={styles.toolbarButton}
+                  onPress={addPhoto}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a photo"
+                >
+                  <CameraIcon size={17} />
+                  <Text style={styles.toolbarButtonLabel}>Photo</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.toolbarButton}
+                  onPress={addHeading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a subheading"
+                >
+                  <HeadingIcon size={17} />
+                  <Text style={styles.toolbarButtonLabel}>Heading</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.toolbarButton}
+                  onPress={addChecklist}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a response checklist"
+                >
+                  <ChecklistIcon size={17} />
+                  <Text style={styles.toolbarButtonLabel}>Checklist</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
+                  onPress={() => setVerseBarOpen((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Insert a Bible verse"
+                >
+                  <OpenBookIcon size={17} color={verseBarOpen ? colors.verseText : colors.textSecondary} />
+                  <Text style={[styles.toolbarButtonLabel, verseBarOpen && styles.toolbarButtonLabelActive]}>
+                    Verse
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.toolbarButton, tagBarOpen && styles.toolbarButtonActive]}
+                  onPress={() => setTagBarOpen((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Tags"
+                >
+                  <TagIcon size={17} color={tagBarOpen ? colors.verseText : colors.textSecondary} />
+                  <Text style={[styles.toolbarButtonLabel, tagBarOpen && styles.toolbarButtonLabelActive]}>Tags</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.toolbarButton, !canUndo && styles.toolbarButtonDisabled]}
+                  onPress={undo}
+                  disabled={!canUndo}
+                  accessibilityRole="button"
+                  accessibilityLabel="Undo"
+                >
+                  <UndoIcon size={17} color={canUndo ? colors.textSecondary : colors.textFaint} />
+                  <Text style={[styles.toolbarButtonLabel, !canUndo && styles.toolbarButtonLabelDisabled]}>Undo</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.toolbarButton, !canRedo && styles.toolbarButtonDisabled]}
+                  onPress={redo}
+                  disabled={!canRedo}
+                  accessibilityRole="button"
+                  accessibilityLabel="Redo"
+                >
+                  <RedoIcon size={17} color={canRedo ? colors.textSecondary : colors.textFaint} />
+                  <Text style={[styles.toolbarButtonLabel, !canRedo && styles.toolbarButtonLabelDisabled]}>Redo</Text>
+                </Pressable>
+              </ScrollView>
+              {/* A quiet hint that there are more tools to the right — without
+                  it, Heading/Checklist/Verse/Tags/Undo/Redo can scroll fully
+                  off-screen on a narrow phone with nothing suggesting they're
+                  reachable at all. Only shown while there's actually more to
+                  scroll to. */}
+              {toolbarOverflow ? (
+                <View style={styles.toolbarFade} pointerEvents="none">
+                  <ChevronRightIcon size={13} color={colors.textFaint} />
+                </View>
+              ) : null}
+            </View>
             <View style={styles.savedRow}>
               <View style={[styles.savedDot, saveState === "saving" && { backgroundColor: colors.textFaint }]} />
               <Text style={styles.savedText}>{saveState === "saving" ? "Saving…" : "Saved"}</Text>
@@ -1555,6 +1632,17 @@ function makeStyles(colors: ColorPalette) {
     borderTopColor: colors.borderLight,
   },
   toolbarScroll: { flexDirection: "row", alignItems: "center", gap: 10 },
+  toolbarFade: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+    opacity: 0.9,
+  },
   toolbarButton: {
     width: 58,
     height: 50,
