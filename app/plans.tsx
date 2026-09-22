@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ViewShot from "react-native-view-shot";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
 import { useAlert } from "@/context/AlertContext";
 import { fontFamily } from "@/theme/typography";
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ShareArrowIcon } from "@/components/icons";
+import { StreakImageCard, STREAK_CARD_HEIGHT, STREAK_CARD_WIDTH } from "@/components/StreakImageCard";
+import { shareVerseImageUri } from "@/lib/shareVerseImage";
 import {
   allCompletionDates,
   completedCount,
@@ -39,6 +42,23 @@ export default function PlansScreen() {
   const showAlert = useAlert();
   const streak = currentStreak(allCompletionDates(progress));
   const selected = plans.find((p) => p.id === selectedId) ?? null;
+  const shotRef = useRef<ViewShot>(null);
+  const [sharing, setSharing] = useState(false);
+
+  async function shareStreak() {
+    if (!selected || sharing) return;
+    try {
+      setSharing(true);
+      // @ts-ignore - capture() exists on the ViewShot ref at runtime
+      const uri: string = await shotRef.current?.capture?.();
+      if (!uri) return;
+      await shareVerseImageUri(uri, "amani-streak.png");
+    } catch (err) {
+      showAlert({ title: "Couldn't create the image", message: String(err) });
+    } finally {
+      setSharing(false);
+    }
+  }
 
   function goBack() {
     if (selected && !params.plan) setSelectedId(null);
@@ -145,9 +165,22 @@ export default function PlansScreen() {
             <View style={styles.barTrack}>
               <View style={[styles.barFill, { width: `${Math.round((total ? done / total : 0) * 100)}%` }]} />
             </View>
-            <Text style={styles.planMeta}>
-              {done} of {total} days{streak > 0 ? ` · ${streak}-day streak` : ""}
-            </Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.planMeta}>
+                {done} of {total} days{streak > 0 ? ` · ${streak}-day streak` : ""}
+              </Text>
+              {streak > 0 ? (
+                <Pressable
+                  onPress={shareStreak}
+                  style={styles.shareChip}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share your streak"
+                >
+                  <ShareArrowIcon size={13} color={colors.gold} />
+                  <Text style={styles.shareChipText}>{sharing ? "Preparing…" : "Share streak"}</Text>
+                </Pressable>
+              ) : null}
+            </View>
 
             {!p ? (
               <Pressable
@@ -232,6 +265,13 @@ export default function PlansScreen() {
           );
         }}
       />
+
+      {/* Offscreen render target for the shareable streak-card image. */}
+      {selected ? (
+        <View style={[styles.offscreen, { pointerEvents: "none" }]}>
+          <StreakImageCard ref={shotRef} streak={streak} planName={selected.name} daysDone={done} daysTotal={total} />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -271,7 +311,20 @@ function makeStyles(colors: ColorPalette) {
     },
     planName: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary },
     planDesc: { fontFamily: fontFamily.sansRegular, fontSize: 12.5, color: colors.textMuted, marginTop: 2 },
-    planMeta: { fontFamily: fontFamily.sansSemibold, fontSize: 12, color: colors.textSecondary, marginTop: 6 },
+    planMeta: { fontFamily: fontFamily.sansSemibold, fontSize: 12, color: colors.textSecondary },
+    metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 },
+    shareChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 10,
+      height: 26,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    shareChipText: { fontFamily: fontFamily.sansBold, fontSize: 11, color: colors.gold },
+    offscreen: { position: "absolute", top: 0, left: -9999, width: STREAK_CARD_WIDTH, height: STREAK_CARD_HEIGHT },
     barTrack: { height: 6, borderRadius: 3, backgroundColor: colors.borderLight, marginTop: 12, overflow: "hidden" },
     barFill: { height: 6, borderRadius: 3, backgroundColor: colors.gold },
     todayCard: {

@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useTextStyles, useTheme, type ThemeMode } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
-import { ChevronRightIcon, DocumentIcon, MoonIcon, OpenBookIcon, UserIcon } from "@/components/icons";
+import { ChartIcon, ChevronRightIcon, DocumentIcon, MoonIcon, OpenBookIcon, UserIcon } from "@/components/icons";
 import { AppLockSection } from "@/components/AppLockSection";
 import { BackupSection } from "@/components/BackupSection";
 import { GoogleDriveSection } from "@/components/GoogleDriveSection";
@@ -110,6 +110,12 @@ export default function SettingsScreen() {
             ))}
           </View>
         </View>
+
+        <Pressable style={styles.linkRow} onPress={() => router.push("/stats")}>
+          <ChartIcon size={16} color={colors.textSecondary} />
+          <Text style={styles.linkRowText}>Your reading, so far</Text>
+          <ChevronRightIcon size={16} />
+        </Pressable>
 
         <AppLockSection />
         <BackupSection />

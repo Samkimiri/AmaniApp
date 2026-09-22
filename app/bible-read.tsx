@@ -2,10 +2,18 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Speech from "expo-speech";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
-import { BookmarkIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@/components/icons";
+import {
+  BookmarkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  SpeakerIcon,
+  StopIcon,
+} from "@/components/icons";
 import {
   BOOKS,
   chapterCount,
@@ -15,7 +23,8 @@ import {
   useActiveTranslation,
   VerseResult,
 } from "@/data/bible";
-import { saveReadingPosition } from "@/data/readingProgress";
+import { getReadingPosition, saveReadingPosition } from "@/data/readingProgress";
+import { markChapterRead } from "@/data/readingStats";
 import { bookmarks, highlights } from "@/data/verseMarks";
 import {
   LINE_SPACING_RATIO,
@@ -44,6 +53,29 @@ export default function BibleReadScreen() {
     const n = Number(params.chapter);
     return Number.isFinite(n) && n > 0 ? n : 1;
   });
+  // Arriving with no book/chapter at all (e.g. the installed app's
+  // "Continue reading" shortcut) resumes the last chapter read. Reads the
+  // saved position directly, once, rather than via a subscription — the
+  // effect below that *writes* the position must not fire with the
+  // Genesis-1 default before this has had a chance to apply, or it would
+  // overwrite the very position it's trying to resume.
+  const [ready, setReady] = useState(!!params.book);
+  useEffect(() => {
+    if (params.book) return;
+    let cancelled = false;
+    getReadingPosition().then((pos) => {
+      if (cancelled) return;
+      if (pos) {
+        setBook(pos.book);
+        setChapter(pos.chapter);
+      }
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Verse(s) to spotlight when arriving from a scripture reference in a
   // note; cleared as soon as the reader moves to another chapter.
   const [focus, setFocus] = useState<{ start: number; end: number } | null>(() => {
@@ -63,6 +95,7 @@ export default function BibleReadScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerBook, setPickerBook] = useState<string | null>(null);
   const [actionVerse, setActionVerse] = useState<VerseResult | null>(null);
+  const [speaking, setSpeaking] = useState(false);
   const [highlightMap, setHighlightMap] = useState<Record<string, string | undefined>>({});
   const [bookmarkSet, setBookmarkSet] = useState<Set<string>>(new Set());
   const translationCode = useActiveTranslation();
@@ -79,12 +112,48 @@ export default function BibleReadScreen() {
     updateReaderSettings({ layout: next });
   }
 
+  // Read the chapter aloud with the device's own text-to-speech (no
+  // audio files shipped, works fully offline). Stops automatically if the
+  // reader navigates elsewhere or unmounts, so it never keeps talking
+  // over a chapter no longer on screen.
+  function toggleSpeech() {
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+      return;
+    }
+    const text = verses
+      .filter((v) => !v.text.startsWith("["))
+      .map((v) => v.text)
+      .join(" ");
+    if (!text) return;
+    setSpeaking(true);
+    Speech.speak(`${book}, chapter ${chapter}. ${text}`, {
+      onDone: () => setSpeaking(false),
+      onStopped: () => setSpeaking(false),
+      onError: () => setSpeaking(false),
+    });
+  }
+
+  useEffect(() => {
+    Speech.stop();
+    setSpeaking(false);
+  }, [book, chapter]);
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
+
   const verses = useMemo(() => getChapter(book, chapter), [book, chapter, translationCode]);
   useEffect(() => {
+    if (!ready) return;
     saveReadingPosition({ book, chapter });
+    markChapterRead(book, chapter);
     scrollRef.current?.scrollTo({ y: 0, animated: false });
     rowTops.current = {};
-  }, [book, chapter]);
+  }, [book, chapter, ready]);
 
   // Bring the spotlighted verse into view once the chapter has laid out.
   useEffect(() => {
@@ -181,6 +250,18 @@ export default function BibleReadScreen() {
           <ChevronDownIcon size={12} strokeWidth={3} color={colors.textSecondary} />
         </Pressable>
         <View style={styles.headerRight}>
+          <Pressable
+            onPress={toggleSpeech}
+            style={[styles.settingsButton, speaking && styles.settingsButtonActive]}
+            accessibilityRole="button"
+            accessibilityLabel={speaking ? "Stop reading aloud" : "Read this chapter aloud"}
+          >
+            {speaking ? (
+              <StopIcon size={13} color={colors.white} />
+            ) : (
+              <SpeakerIcon size={16} color={colors.textPrimary} />
+            )}
+          </Pressable>
           <Pressable
             onPress={() => setSettingsOpen(true)}
             style={styles.settingsButton}
@@ -407,6 +488,7 @@ function makeStyles(colors: ColorPalette, settings: ReaderSettings) {
     verseNote: { fontFamily: noteFont, fontStyle: "italic", fontSize: Math.round(size * 0.85), lineHeight: Math.round(lineHeight * 0.85), color: colors.textMuted },
     headerRight: { flexDirection: "row", alignItems: "center", gap: 8, marginRight: 8 },
     settingsButton: { minWidth: 44, height: 34, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10 },
+    settingsButtonActive: { backgroundColor: colors.navy, borderColor: colors.navy },
     settingsButtonText: { fontFamily: fontFamily.serifBold, fontSize: 14, color: colors.textPrimary },
     versionChip: { minWidth: 62, height: 34, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 999, backgroundColor: colors.navy, paddingHorizontal: 12 },
     versionChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.white },

@@ -22,6 +22,7 @@ import { newId, SermonNote } from "@/types/note";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { BibleBrowser, ContinueReadingCard } from "@/components/BibleBrowser";
 import { PlansCard } from "@/components/PlansCard";
+import { MemorizeCard } from "@/components/MemorizeCard";
 import { TranslationPicker } from "@/components/TranslationPicker";
 import { getHighlightColor } from "@/theme/highlightColors";
 
@@ -190,6 +191,7 @@ export default function BibleScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <ContinueReadingCard />
           <PlansCard />
+          <MemorizeCard />
           <BibleBrowser />
 
           <Text style={[textStyles.label, { marginTop: 32, marginBottom: 14 }]}>Verse lookup</Text>

@@ -122,6 +122,24 @@ export function currentStreak(dates: string[], today: Date = new Date()): number
   return streak;
 }
 
+/** The longest run of consecutive calendar days anywhere in the history —
+ * unlike `currentStreak`, this doesn't care whether the run is still
+ * active, so a broken 20-day streak from last year still shows as 20. */
+export function longestStreak(dates: string[]): number {
+  const unique = Array.from(new Set(dates)).sort();
+  if (unique.length === 0) return 0;
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < unique.length; i++) {
+    const prev = new Date(unique[i - 1] + "T00:00:00");
+    const cur = new Date(unique[i] + "T00:00:00");
+    const diffDays = Math.round((cur.getTime() - prev.getTime()) / 86400000);
+    run = diffDays === 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+
 export function nextDayIndex(plan: ReadingPlan, progress: PlanProgress | undefined): number {
   const done = progress?.completed ?? {};
   for (let i = 0; i < plan.days.length; i++) if (!(String(i) in done)) return i;

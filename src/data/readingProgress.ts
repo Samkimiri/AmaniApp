@@ -22,6 +22,13 @@ async function load(): Promise<ReadingPosition | null> {
   return null;
 }
 
+/** One-shot read of the last saved position, for callers that just need
+ * the value once (e.g. deciding what to resume to) rather than a
+ * subscription. */
+export async function getReadingPosition(): Promise<ReadingPosition | null> {
+  return load();
+}
+
 /** Remembers where the reader left off, so "Continue reading" can drop
  * someone straight back into the chapter they were on. Local only. */
 export async function saveReadingPosition(position: ReadingPosition): Promise<void> {

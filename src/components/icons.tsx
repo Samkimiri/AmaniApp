@@ -46,6 +46,37 @@ export function CalendarIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps
   );
 }
 
+export function SpeakerIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4v-5Z" strokeLinejoin="round" />
+      <Path d="M16 9.2a4 4 0 0 1 0 5.6" />
+      <Path d="M18.5 7a7.5 7.5 0 0 1 0 10" />
+    </Svg>
+  );
+}
+
+export function ChartIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Line x1={4.5} y1={20} x2={4.5} y2={4} />
+      <Line x1={4.5} y1={20} x2={20} y2={20} />
+      <Rect x={7.5} y={13} width={3} height={7} rx={0.5} />
+      <Rect x={12.5} y={9} width={3} height={11} rx={0.5} />
+      <Rect x={17} y={5.5} width={3} height={14.5} rx={0.5} />
+    </Svg>
+  );
+}
+
+export function CardsIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Rect x={7} y={7} width={13} height={13} rx={2} />
+      <Path d="M4.5 15.5V6a2 2 0 0 1 2-2h9.5" />
+    </Svg>
+  );
+}
+
 export function HomeIcon({ size, color = "#A6AEB8", strokeWidth }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>

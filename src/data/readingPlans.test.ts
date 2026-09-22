@@ -3,6 +3,7 @@ import {
   formatDayReading,
   getReadingPlans,
   localDateString,
+  longestStreak,
   nextDayIndex,
   splitIntoDays,
 } from "./readingPlans";
@@ -56,6 +57,21 @@ describe("currentStreak", () => {
   });
   it("is zero with no history", () => {
     expect(currentStreak([], today)).toBe(0);
+  });
+});
+
+describe("longestStreak", () => {
+  const d = (offset: number) => localDateString(new Date(2026, 5, 15 + offset));
+
+  it("finds the longest run even if it isn't the most recent one", () => {
+    // a 2-day run long ago, then a gap, then today's single day
+    expect(longestStreak([d(-20), d(-19), d(0)])).toBe(2);
+  });
+  it("ignores duplicate dates", () => {
+    expect(longestStreak([d(0), d(0), d(-1)])).toBe(2);
+  });
+  it("is zero with no history", () => {
+    expect(longestStreak([])).toBe(0);
   });
 });
 
