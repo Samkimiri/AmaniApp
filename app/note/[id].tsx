@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { Audio, type AVPlaybackStatus } from "expo-av";
 import { ColorPalette } from "@/theme/colors";
@@ -23,8 +24,9 @@ import { fontFamily } from "@/theme/typography";
 import {
   CameraIcon,
   ChecklistIcon,
-  ChevronLeftIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CloseIcon,
   HeadingIcon,
   HighlightIcon,
@@ -76,6 +78,8 @@ function isBlankNote(note: SermonNote): boolean {
 // How many undo steps to keep — generous for a single editing session
 // without letting the history array grow unbounded over a long one.
 const MAX_HISTORY = 100;
+
+const SIDEBAR_COLLAPSED_KEY = "amani.noteToolRailCollapsed.v1";
 
 function emptyNote(id: string, templateId?: string): SermonNote {
   const now = new Date().toISOString();
@@ -130,6 +134,23 @@ export default function NoteEditorScreen() {
   const railContentHeight = useRef(0);
   function updateRailOverflow() {
     setRailOverflow(railContentHeight.current > railContainerHeight.current + 1);
+  }
+  // Minimized to a thin strip, the tool rail gets out of the way for a
+  // clearer view of what's being typed; expanded, every tool is a single
+  // tap away. Remembered across notes (not just this session) since it's
+  // a reading/writing preference, not a one-off state.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem(SIDEBAR_COLLAPSED_KEY).then((saved) => {
+      if (saved === "1") setSidebarCollapsed(true);
+    });
+  }, []);
+  function toggleSidebarCollapsed() {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      AsyncStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0").catch(() => {});
+      return next;
+    });
   }
   const [focusMode, setFocusMode] = useState(false);
   // A short delay before actually leaving focus mode on blur, so tabbing
@@ -888,8 +909,29 @@ export default function NoteEditorScreen() {
               focus/keyboard state — so every tool (record, photo, headings,
               checklists, verses, tags, undo/redo) is reachable with one tap
               even while actively typing into a block, rather than needing
-              "Done" first to reveal a bottom toolbar. */}
-          <View style={styles.sidebar}>
+              "Done" first to reveal a bottom toolbar. Collapsible down to a
+              thin strip for a clearer view of the page while typing, and
+              back up to the full set of tools with the same tap. */}
+          <View style={[styles.sidebar, sidebarCollapsed && styles.sidebarCollapsedWidth]}>
+            <Pressable
+              onPress={toggleSidebarCollapsed}
+              style={styles.sidebarToggle}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={sidebarCollapsed ? "Show note tools" : "Minimize note tools"}
+            >
+              {sidebarCollapsed ? (
+                <ChevronRightIcon size={13} color={colors.textFaint} />
+              ) : (
+                <ChevronLeftIcon size={13} color={colors.textFaint} />
+              )}
+            </Pressable>
+            {sidebarCollapsed ? (
+              <View style={styles.sidebarCollapsedDot}>
+                <View style={[styles.savedDot, saveState === "saving" && { backgroundColor: colors.textFaint }]} />
+              </View>
+            ) : (
+              <>
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.sidebarScroll}
@@ -1011,6 +1053,8 @@ export default function NoteEditorScreen() {
               <View style={[styles.savedDot, saveState === "saving" && { backgroundColor: colors.textFaint }]} />
               <Text style={styles.sidebarSavedText}>{saveState === "saving" ? "Saving…" : "Saved"}</Text>
             </View>
+            </>
+            )}
           </View>
 
           <View style={styles.editorColumn}>
@@ -1700,6 +1744,18 @@ function makeStyles(colors: ColorPalette) {
     borderRightWidth: 1,
     borderRightColor: colors.borderLight,
   },
+  sidebarCollapsedWidth: { width: 34, paddingHorizontal: 0, alignItems: "center" },
+  sidebarToggle: {
+    alignSelf: "center",
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#F5F2EA",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  sidebarCollapsedDot: { flex: 1, alignItems: "center", justifyContent: "flex-end", paddingBottom: 16 },
   sidebarScroll: { alignItems: "center", gap: 10, paddingBottom: 6 },
   sidebarFade: {
     position: "absolute",
