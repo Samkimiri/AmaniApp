@@ -22,7 +22,9 @@ import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import {
   CameraIcon,
+  ChecklistIcon,
   ChevronLeftIcon,
+  CloseIcon,
   HeadingIcon,
   HighlightIcon,
   ImagePlaceholderIcon,
@@ -57,10 +59,15 @@ function isBlankNote(note: SermonNote): boolean {
     !note.church?.trim() &&
     !note.preacher?.trim() &&
     !(note.tags && note.tags.length > 0) &&
-    // A heading counts as structure, not content — a fresh templated
-    // note (all headings, no typing yet) should still be discardable,
-    // same as a truly blank one.
-    note.blocks.every((b) => b.type === "heading" || (b.type === "text" && !b.text.trim()))
+    // A heading (or an all-empty checklist) counts as structure, not
+    // content — a fresh templated note (all headings, no typing yet)
+    // should still be discardable, same as a truly blank one.
+    note.blocks.every(
+      (b) =>
+        b.type === "heading" ||
+        (b.type === "text" && !b.text.trim()) ||
+        (b.type === "checklist" && b.items.every((i) => !i.text.trim()))
+    )
   );
 }
 
@@ -207,8 +214,36 @@ export default function NoteEditorScreen() {
   const [liveCaption, setLiveCaption] = useState("");
   const finalTranscriptRef = useRef("");
 
+  // Dictating straight into a text block (as opposed to recording full
+  // audio) — same on-device recognizer, a separate mode so the two never
+  // run at once. Native only: browsers have no on-device speech API, and
+  // routing audio through a browser's cloud recognizer would quietly
+  // break the "nothing leaves your device" promise this feature makes
+  // for the audio-recording transcript. `dictatingRef` mirrors the state
+  // for the unmount-cleanup effect, same reasoning as `recordingRef`.
+  const [dictatingBlockId, setDictatingBlockId] = useState<string | null>(null);
+  const dictatingRef = useRef<string | null>(null);
+
+  function setDictating(blockId: string | null) {
+    dictatingRef.current = blockId;
+    setDictatingBlockId(blockId);
+  }
+
   useSpeechRecognitionEvent("result", (event) => {
     const text = event.results[0]?.transcript ?? "";
+    if (dictatingRef.current) {
+      if (!event.isFinal) return;
+      const blockId = dictatingRef.current;
+      setNote((n) => ({
+        ...n,
+        blocks: n.blocks.map((b) => {
+          if (b.id !== blockId || b.type !== "text") return b;
+          const sep = b.text && !/\s$/.test(b.text) ? " " : "";
+          return { ...b, text: b.text + sep + text };
+        }),
+      }));
+      return;
+    }
     if (event.isFinal) {
       finalTranscriptRef.current = `${finalTranscriptRef.current} ${text}`.trim();
       setLiveCaption("");
@@ -217,11 +252,34 @@ export default function NoteEditorScreen() {
     }
   });
   useSpeechRecognitionEvent("error", (event) => {
-    // Captions are a bonus on top of the recording, not the recording
-    // itself — never block or alert on this failing (permission denied,
-    // engine busy, no network for the on-device model's first download).
+    // Captions/dictation are a bonus on top of typing, not a requirement
+    // — never block or alert on this failing (permission denied, engine
+    // busy, no network for the on-device model's first download).
     console.warn("Speech recognition unavailable:", event.error, event.message);
+    if (dictatingRef.current) setDictating(null);
   });
+
+  async function toggleDictate(blockId: string | null) {
+    if (!blockId || Platform.OS === "web" || recording) return;
+    if (dictatingRef.current === blockId) {
+      ExpoSpeechRecognitionModule.stop();
+      setDictating(null);
+      return;
+    }
+    if (dictatingRef.current) ExpoSpeechRecognitionModule.stop();
+    const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!permission.granted) {
+      showAlert({ title: "Microphone access needed", message: "Allow microphone access to dictate into this note." });
+      return;
+    }
+    setDictating(blockId);
+    ExpoSpeechRecognitionModule.start({
+      lang: "en-US",
+      interimResults: true,
+      continuous: true,
+      requiresOnDeviceRecognition: true,
+    });
+  }
   const [playingBlockId, setPlayingBlockId] = useState<string | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const playingObjectUrlRef = useRef<string | null>(null);
@@ -239,7 +297,7 @@ export default function NoteEditorScreen() {
       soundRef.current?.unloadAsync();
       if (playingObjectUrlRef.current) URL.revokeObjectURL(playingObjectUrlRef.current);
       recordingRef.current?.stopAndUnloadAsync().catch(() => {});
-      if (recordingRef.current && Platform.OS !== "web") ExpoSpeechRecognitionModule.stop();
+      if ((recordingRef.current || dictatingRef.current) && Platform.OS !== "web") ExpoSpeechRecognitionModule.stop();
       if (focusExitTimer.current) clearTimeout(focusExitTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -413,6 +471,67 @@ export default function NoteEditorScreen() {
     setNote((n) => ({
       ...n,
       blocks: n.blocks.map((b) => (b.id === blockId && b.type === "verse" ? { ...b, color } : b)),
+    }));
+  }
+
+  function addChecklist() {
+    appendBlock({ id: newId(), type: "checklist", items: [{ id: newId(), text: "", done: false }] });
+  }
+
+  function toggleChecklistItem(blockId: string, itemId: string) {
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) =>
+        b.id === blockId && b.type === "checklist"
+          ? { ...b, items: b.items.map((i) => (i.id === itemId ? { ...i, done: !i.done } : i)) }
+          : b
+      ),
+    }));
+  }
+
+  function updateChecklistItemText(blockId: string, itemId: string, text: string) {
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) =>
+        b.id === blockId && b.type === "checklist"
+          ? { ...b, items: b.items.map((i) => (i.id === itemId ? { ...i, text } : i)) }
+          : b
+      ),
+    }));
+  }
+
+  function addChecklistItem(blockId: string, afterItemId?: string) {
+    const newItem = { id: newId(), text: "", done: false };
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) => {
+        if (b.id !== blockId || b.type !== "checklist") return b;
+        if (!afterItemId) return { ...b, items: [...b.items, newItem] };
+        const idx = b.items.findIndex((i) => i.id === afterItemId);
+        const items = [...b.items];
+        items.splice(idx + 1, 0, newItem);
+        return { ...b, items };
+      }),
+    }));
+  }
+
+  function removeChecklistItem(blockId: string, itemId: string) {
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) => {
+        if (b.id !== blockId || b.type !== "checklist") return b;
+        const items = b.items.filter((i) => i.id !== itemId);
+        // Never leave a checklist block with zero rows — clear the last
+        // one instead, same as removeBlock does for the whole note.
+        return { ...b, items: items.length > 0 ? items : [{ id: newId(), text: "", done: false }] };
+      }),
+    }));
+  }
+
+  function updateImageCaption(blockId: string, caption: string) {
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) => (b.id === blockId && b.type === "image" ? { ...b, caption } : b)),
     }));
   }
 
@@ -709,10 +828,27 @@ export default function NoteEditorScreen() {
                 >
                   <HighlightIcon size={16} color={colors.gold} />
                 </Pressable>
+                {Platform.OS !== "web" ? (
+                  <Pressable
+                    onPress={() => toggleDictate(activeTextBlockId)}
+                    disabled={!!recording}
+                    style={[
+                      styles.formatButton,
+                      dictatingBlockId === activeTextBlockId && styles.formatButtonActive,
+                      !!recording && styles.formatButtonDisabled,
+                    ]}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={dictatingBlockId === activeTextBlockId ? "Stop dictating" : "Dictate into this block"}
+                  >
+                    <MicIcon size={15} color={dictatingBlockId === activeTextBlockId ? colors.white : colors.textSecondary} />
+                  </Pressable>
+                ) : null}
               </View>
             ) : (
               <View style={{ flex: 1 }} />
             )}
+            {dictatingBlockId ? <Text style={styles.dictatingLabel}>Listening…</Text> : null}
             <Pressable
               onPress={() => Keyboard.dismiss()}
               style={styles.doneButton}
@@ -917,6 +1053,56 @@ export default function NoteEditorScreen() {
                 </SwipeToDelete>
               );
             }
+            if (block.type === "checklist") {
+              return (
+                <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
+                  <View style={styles.checklistBlock}>
+                    {block.items.map((item) => (
+                      <View key={item.id} style={styles.checklistRow}>
+                        <Pressable
+                          onPress={() => toggleChecklistItem(block.id, item.id)}
+                          style={[styles.checklistCheckbox, item.done && styles.checklistCheckboxDone]}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: item.done }}
+                          accessibilityLabel={item.text.trim() || "Checklist item"}
+                        >
+                          {item.done ? <Text style={styles.checklistCheckMark}>&#10003;</Text> : null}
+                        </Pressable>
+                        <TextInput
+                          value={item.text}
+                          onChangeText={(text) => updateChecklistItemText(block.id, item.id, text)}
+                          onFocus={handleTypingFocus}
+                          onBlur={handleTypingBlur}
+                          onSubmitEditing={() => addChecklistItem(block.id, item.id)}
+                          placeholder="A response or action step…"
+                          placeholderTextColor={colors.textFaint}
+                          style={[styles.checklistInput, item.done && styles.checklistInputDone]}
+                          returnKeyType="next"
+                          blurOnSubmit={false}
+                        />
+                        <Pressable
+                          onPress={() => removeChecklistItem(block.id, item.id)}
+                          hitSlop={8}
+                          style={styles.checklistRemoveButton}
+                          accessibilityRole="button"
+                          accessibilityLabel="Remove this item"
+                        >
+                          <CloseIcon size={12} color={colors.textFaint} />
+                        </Pressable>
+                      </View>
+                    ))}
+                    <Pressable
+                      onPress={() => addChecklistItem(block.id)}
+                      style={styles.checklistAddRow}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add a checklist item"
+                    >
+                      <Text style={styles.checklistAddText}>+ Add item</Text>
+                    </Pressable>
+                  </View>
+                </SwipeToDelete>
+              );
+            }
             if (block.type === "audio") {
               return (
                 <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
@@ -935,7 +1121,15 @@ export default function NoteEditorScreen() {
                   <Image source={{ uri: block.uri }} style={styles.image} />
                   <View style={styles.imageCaption}>
                     <ImagePlaceholderIcon size={14} />
-                    <Text style={styles.imageCaptionText}>Photo attached to this note</Text>
+                    <TextInput
+                      value={block.caption ?? ""}
+                      onChangeText={(caption) => updateImageCaption(block.id, caption)}
+                      onFocus={handleTypingFocus}
+                      onBlur={handleTypingBlur}
+                      placeholder="Add a caption (optional)"
+                      placeholderTextColor={colors.textFaint}
+                      style={styles.imageCaptionText}
+                    />
                   </View>
                 </View>
               </SwipeToDelete>
@@ -1059,8 +1253,13 @@ export default function NoteEditorScreen() {
                 <Text style={[styles.toolbarButtonLabel, !canRedo && styles.toolbarButtonLabelDisabled]}>Redo</Text>
               </Pressable>
               <Pressable
-                style={[styles.toolbarButton, recording && styles.toolbarButtonRecording]}
+                style={[
+                  styles.toolbarButton,
+                  recording && styles.toolbarButtonRecording,
+                  !!dictatingBlockId && styles.toolbarButtonDisabled,
+                ]}
                 onPress={toggleRecording}
+                disabled={!!dictatingBlockId}
                 accessibilityRole="button"
                 accessibilityLabel={recording ? "Stop recording" : "Record audio"}
               >
@@ -1086,6 +1285,15 @@ export default function NoteEditorScreen() {
               >
                 <HeadingIcon size={17} />
                 <Text style={styles.toolbarButtonLabel}>Heading</Text>
+              </Pressable>
+              <Pressable
+                style={styles.toolbarButton}
+                onPress={addChecklist}
+                accessibilityRole="button"
+                accessibilityLabel="Add a response checklist"
+              >
+                <ChecklistIcon size={17} />
+                <Text style={styles.toolbarButtonLabel}>Checklist</Text>
               </Pressable>
               <Pressable
                 style={[styles.toolbarButton, verseBarOpen && styles.toolbarButtonActive]}
@@ -1169,6 +1377,9 @@ function makeStyles(colors: ColorPalette) {
   formatButtonText: { fontFamily: fontFamily.sansBold, fontSize: 15, color: colors.textSecondary },
   formatButtonTextBold: { fontFamily: fontFamily.sansExtraBold, fontSize: 14, color: colors.textPrimary },
   formatButtonTextItalic: { fontFamily: fontFamily.serifItalic, fontSize: 15, color: colors.textPrimary },
+  formatButtonActive: { backgroundColor: colors.navy },
+  formatButtonDisabled: { opacity: 0.4 },
+  dictatingLabel: { fontFamily: fontFamily.sansBold, fontSize: 11.5, color: colors.gold, marginRight: 6 },
   doneButton: {
     height: 34,
     paddingHorizontal: 16,
@@ -1238,11 +1449,36 @@ function makeStyles(colors: ColorPalette) {
     padding: 0,
   },
   headingRemoveButton: { width: 22, height: 22, alignItems: "center", justifyContent: "center" },
+  checklistBlock: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
+  },
+  checklistRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  checklistCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checklistCheckboxDone: { backgroundColor: colors.navy, borderColor: colors.navy },
+  checklistCheckMark: { color: colors.white, fontFamily: fontFamily.sansExtraBold, fontSize: 12 },
+  checklistInput: { flex: 1, fontFamily: fontFamily.sansRegular, fontSize: 14.5, color: colors.textPrimary, paddingVertical: 6 },
+  checklistInputDone: { color: colors.textFaint, textDecorationLine: "line-through" },
+  checklistRemoveButton: { width: 22, height: 22, alignItems: "center", justifyContent: "center" },
+  checklistAddRow: { paddingVertical: 8, paddingLeft: 32 },
+  checklistAddText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.gold },
   colorPickerRow: { marginTop: 8, paddingHorizontal: 2 },
   imageBlock: { borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   image: { width: "100%", height: 180, backgroundColor: "#EFE7D8" },
   imageCaption: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },
-  imageCaptionText: { fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: colors.textSecondary },
+  imageCaptionText: { flex: 1, fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: colors.textSecondary, padding: 0 },
 
   recordingBar: {
     backgroundColor: colors.navy,

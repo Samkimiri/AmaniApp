@@ -24,6 +24,7 @@ function noteSearchText(note: SermonNote): string {
       if (b.type === "text" || b.type === "heading") return b.text;
       if (b.type === "verse") return `${b.reference} ${b.text}`;
       if (b.type === "audio") return b.transcript ?? "";
+      if (b.type === "checklist") return b.items.map((i) => i.text).join(" ");
       return "";
     }),
   ]

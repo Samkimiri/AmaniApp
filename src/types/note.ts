@@ -1,6 +1,6 @@
 import { getHighlightColor } from "@/theme/highlightColors";
 
-export type NoteBlockType = "text" | "heading" | "verse" | "image" | "audio";
+export type NoteBlockType = "text" | "heading" | "verse" | "image" | "audio" | "checklist";
 
 export interface TextBlock {
   id: string;
@@ -46,7 +46,21 @@ export interface AudioBlock {
   transcript?: string;
 }
 
-export type NoteBlock = TextBlock | HeadingBlock | VerseBlock | ImageBlock | AudioBlock;
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+/** A response/action-step list — "what am I going to do about this" —
+ * distinct from a plain paragraph so each item gets its own checkbox. */
+export interface ChecklistBlock {
+  id: string;
+  type: "checklist";
+  items: ChecklistItem[];
+}
+
+export type NoteBlock = TextBlock | HeadingBlock | VerseBlock | ImageBlock | AudioBlock | ChecklistBlock;
 
 export function firstAudioBlock(note: SermonNote): AudioBlock | undefined {
   return note.blocks.find((b): b is AudioBlock => b.type === "audio");
@@ -102,6 +116,9 @@ export function noteToPlainText(note: SermonNote): string {
     } else if (block.type === "audio") {
       lines.push(`[Audio recording, ${formatDuration(block.durationMillis)}]`);
       if (block.transcript) lines.push(block.transcript);
+    } else if (block.type === "checklist") {
+      const items = block.items.filter((i) => i.text.trim());
+      for (const item of items) lines.push(`[${item.done ? "x" : " "}] ${item.text.trim()}`);
     }
   }
   lines.push("");
@@ -147,7 +164,12 @@ export function noteToHtml(note: SermonNote): string {
         // and inject a script that runs in this same origin when the
         // note is later shared as a PDF (web's print-to-PDF path renders
         // this HTML in a same-origin tab).
-        return `<img src="${escapeHtml(block.uri)}" style="width:100%;border-radius:8px;margin:12px 0;" />`;
+        const captionHtml = block.caption
+          ? `<div style="font-size:14px;font-style:italic;color:#5B6472;margin:6px 0 12px;">${escapeHtml(
+              block.caption
+            )}</div>`
+          : "";
+        return `<img src="${escapeHtml(block.uri)}" style="width:100%;border-radius:8px;margin:12px 0 0;" />${captionHtml}`;
       }
       if (block.type === "audio") {
         const transcriptHtml = block.transcript
@@ -158,6 +180,21 @@ export function noteToHtml(note: SermonNote): string {
         return `<div style="margin:18px 0;padding:14px 18px;border:1px solid #ECE4D4;border-radius:8px;color:#3E4856;font-size:15px;">&#127911; Audio recording &middot; ${escapeHtml(
           formatDuration(block.durationMillis)
         )}${transcriptHtml}</div>`;
+      }
+      if (block.type === "checklist") {
+        const items = block.items.filter((i) => i.text.trim());
+        if (items.length === 0) return "";
+        const rows = items
+          .map(
+            (i) => `<div style="display:flex;gap:10px;align-items:flex-start;margin:6px 0;">
+          <span style="font-size:18px;line-height:1.4;color:#8A5A00;">${i.done ? "&#9745;" : "&#9744;"}</span>
+          <span style="font-size:18px;line-height:1.5;color:#1F2933;${
+            i.done ? "text-decoration:line-through;opacity:0.6;" : ""
+          }">${escapeHtml(i.text)}</span>
+        </div>`
+          )
+          .join("");
+        return `<div style="margin:18px 0;">${rows}</div>`;
       }
       return "";
     })

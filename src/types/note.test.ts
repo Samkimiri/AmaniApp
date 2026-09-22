@@ -80,6 +80,33 @@ describe("noteToPlainText", () => {
     });
     expect(noteToPlainText(note)).toContain("INTRODUCTION");
   });
+
+  it("renders checklist items with a checked/unchecked marker and skips empty ones", () => {
+    const note = makeNote({
+      blocks: [
+        {
+          id: newId(),
+          type: "checklist",
+          items: [
+            { id: newId(), text: "Pray daily", done: true },
+            { id: newId(), text: "Read Romans 8", done: false },
+            { id: newId(), text: "  ", done: false },
+          ],
+        },
+      ],
+    });
+    const text = noteToPlainText(note);
+    expect(text).toContain("[x] Pray daily");
+    expect(text).toContain("[ ] Read Romans 8");
+    expect(text).not.toMatch(/\[ \]\s*$/m);
+  });
+
+  it("includes an image's caption when present", () => {
+    const note = makeNote({
+      blocks: [{ id: newId(), type: "image", uri: "file://photo.jpg", caption: "Slide 2" }],
+    });
+    expect(noteToPlainText(note)).toContain("[Photo: Slide 2]");
+  });
 });
 
 describe("noteToHtml", () => {
@@ -131,5 +158,33 @@ describe("noteToHtml", () => {
     const html = noteToHtml(note);
     // Sky's background from src/theme/highlightColors.ts
     expect(html).toContain("#E4EEFB");
+  });
+
+  it("renders checklist items as checked/unchecked boxes and escapes their text", () => {
+    const note = makeNote({
+      blocks: [
+        {
+          id: newId(),
+          type: "checklist",
+          items: [
+            { id: newId(), text: "<b>Pray</b> daily", done: true },
+            { id: newId(), text: "Read Romans 8", done: false },
+          ],
+        },
+      ],
+    });
+    const html = noteToHtml(note);
+    expect(html).toContain("&#9745;"); // checked box
+    expect(html).toContain("&#9744;"); // unchecked box
+    expect(html).not.toContain("<b>Pray</b>");
+    expect(html).toContain("&lt;b&gt;Pray&lt;/b&gt;");
+  });
+
+  it("includes an image's caption, escaped, below the image", () => {
+    const note = makeNote({
+      blocks: [{ id: newId(), type: "image", uri: "file://photo.jpg", caption: "<i>Slide</i> 2" }],
+    });
+    const html = noteToHtml(note);
+    expect(html).toContain("&lt;i&gt;Slide&lt;/i&gt; 2");
   });
 });

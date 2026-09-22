@@ -77,6 +77,19 @@ export function CardsIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps) {
   );
 }
 
+export function ChecklistIcon({ size, color = "#1F3A5F", strokeWidth }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="m4 6.5 1.5 1.5L8 5.5" />
+      <Line x1={11} y1={6.5} x2={20} y2={6.5} />
+      <Path d="m4 12.5 1.5 1.5L8 11.5" />
+      <Line x1={11} y1={12.5} x2={20} y2={12.5} />
+      <Path d="m4 18.5 1.5 1.5L8 17.5" />
+      <Line x1={11} y1={18.5} x2={20} y2={18.5} />
+    </Svg>
+  );
+}
+
 export function HomeIcon({ size, color = "#A6AEB8", strokeWidth }: IconProps) {
   return (
     <Svg {...base(size, strokeWidth)} stroke={color}>
