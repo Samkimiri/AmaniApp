@@ -17,16 +17,16 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-/** App-wide theme: Reading (the default — a warm, paper-like palette
- * suited to long stretches of Bible/note reading), Light, Dark, or
- * following the device's system light/dark setting. Persisted locally,
- * same as every other Amani setting — no account, nothing leaves the
- * device. Renders with the default immediately and swaps in the saved
- * preference the moment it's read, so there's no blank flash while
- * AsyncStorage resolves. */
+/** App-wide theme: Light (the default — a plain white, standard
+ * appearance), Reading (a warm, paper-like palette for long stretches of
+ * Bible/note reading), Dark, or following the device's system light/dark
+ * setting. Persisted locally, same as every other Amani setting — no
+ * account, nothing leaves the device. Renders with the default
+ * immediately and swaps in the saved preference the moment it's read, so
+ * there's no blank flash while AsyncStorage resolves. */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
-  const [mode, setModeState] = useState<ThemeMode>("reading");
+  const [mode, setModeState] = useState<ThemeMode>("light");
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {

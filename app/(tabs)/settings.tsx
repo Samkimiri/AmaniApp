@@ -18,8 +18,8 @@ import {
 } from "@/data/bible";
 
 const THEME_OPTIONS: { mode: ThemeMode; label: string }[] = [
-  { mode: "reading", label: "Reading" },
   { mode: "light", label: "Light" },
+  { mode: "reading", label: "Reading" },
   { mode: "dark", label: "Dark" },
   { mode: "system", label: "System" },
 ];
@@ -60,7 +60,7 @@ export default function SettingsScreen() {
             <MoonIcon size={18} color={colors.navy} />
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle}>Appearance</Text>
-              <Text style={styles.rowSubtitle}>Reading is the default — warm and paper-like for long stretches of reading</Text>
+              <Text style={styles.rowSubtitle}>Light is the default — try Reading for a warm, paper-like feel during long stretches of reading</Text>
             </View>
           </View>
           <View style={styles.translationChipRow}>

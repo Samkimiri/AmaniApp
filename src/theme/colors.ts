@@ -98,8 +98,8 @@ export const darkColors: ColorPalette = {
 
 /** A warm, sepia-toned palette modeled on a printed page — for
  * long stretches of reading (the Bible tab, a long note) rather than
- * quick glances at a bright screen. This is the app's default theme;
- * Light/Dark/System are still available in Settings → Appearance. */
+ * quick glances at a bright screen. An optional alternative to the
+ * default Light theme, available in Settings → Appearance. */
 export const readingColors: ColorPalette = {
   navy: "#5A4326",
   navyDark: "#463319",
