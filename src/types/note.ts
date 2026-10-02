@@ -126,8 +126,13 @@ export function noteToPlainText(note: SermonNote): string {
   return lines.join("\n");
 }
 
-/** Simple HTML rendering of a note, used for the PDF share format. */
-export function noteToHtml(note: SermonNote): string {
+/** Simple HTML rendering of a note, used for the PDF share format.
+ * `resolvedImages` maps an image block's id to a self-contained data: URI
+ * (see src/lib/noteExport.ts) — a note only stores a *reference* to its
+ * photos, which a printed page or generated PDF can't load, so callers that
+ * render real photos pass them in here. Anything missing falls back to the
+ * block's own uri. */
+export function noteToHtml(note: SermonNote, resolvedImages?: Record<string, string>): string {
   const meta = [note.church, note.preacher, note.date].filter(Boolean).join(" &middot; ");
   const tagsLine =
     note.tags && note.tags.length > 0
@@ -169,7 +174,8 @@ export function noteToHtml(note: SermonNote): string {
               block.caption
             )}</div>`
           : "";
-        return `<img src="${escapeHtml(block.uri)}" style="width:100%;border-radius:8px;margin:12px 0 0;" />${captionHtml}`;
+        const src = resolvedImages?.[block.id] ?? block.uri;
+        return `<img src="${escapeHtml(src)}" style="width:100%;border-radius:8px;margin:12px 0 0;" />${captionHtml}`;
       }
       if (block.type === "audio") {
         const transcriptHtml = block.transcript

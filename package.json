@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@expo-google-fonts/newsreader": "^0.2.3",
@@ -50,6 +51,8 @@
     "@types/jest": "^29.5.14",
     "@types/react": "~18.2.79",
     "babel-plugin-module-resolver": "^5.0.2",
+    "eslint": "^8.57.0",
+    "eslint-config-expo": "~7.1.2",
     "jest": "^29.7.0",
     "jest-expo": "^51.0.4",
     "typescript": "~5.3.3"

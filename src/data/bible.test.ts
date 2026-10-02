@@ -1,4 +1,21 @@
-import { formatReference, getVerse, getVerseCandidates, resolveBook, searchKeyword } from "./bible";
+import {
+  __setBibleDataForTests,
+  formatReference,
+  getVerse,
+  getVerseCandidates,
+  resolveBook,
+  searchKeyword,
+} from "./bible";
+import kjvFixture from "../../__fixtures__/kjvMini.json";
+
+// The verse text normally loads from a bundled asset at runtime (see the
+// module comment in src/data/bible.ts), which Jest can't fetch — and running
+// the real ~4MB text through Babel made this whole suite take minutes. This
+// small fixture has the real book list, the real chapter *structure* (so
+// chapter counts stay exact) and the verses these tests assert on.
+beforeAll(() => {
+  __setBibleDataForTests(kjvFixture as Parameters<typeof __setBibleDataForTests>[0]);
+});
 
 describe("formatReference", () => {
   it("formats a chapter-and-verse reference", () => {

@@ -230,7 +230,13 @@ export default function PlansScreen() {
         }
         ListFooterComponent={
           p ? (
-            <Pressable onPress={() => confirmReset(selected)} style={styles.reset} accessibilityRole="button">
+            <Pressable
+              onPress={() => confirmReset(selected)}
+              style={styles.reset}
+              accessibilityRole="button"
+              accessibilityLabel="Restart this plan"
+              accessibilityHint="Clears your checkmarks for this plan"
+            >
               <Text style={styles.resetText}>Restart this plan</Text>
             </Pressable>
           ) : null
@@ -268,7 +274,12 @@ export default function PlansScreen() {
 
       {/* Offscreen render target for the shareable streak-card image. */}
       {selected ? (
-        <View style={[styles.offscreen, { pointerEvents: "none" }]}>
+        <View
+          style={[styles.offscreen, { pointerEvents: "none" }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          aria-hidden
+        >
           <StreakImageCard ref={shotRef} streak={streak} planName={selected.name} daysDone={done} daysTotal={total} />
         </View>
       ) : null}

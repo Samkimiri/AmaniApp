@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
@@ -15,7 +15,12 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { loadSavedTranslation } from "@/data/bible";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
-loadSavedTranslation();
+
+// Kicked off once, at module load, so the Bible text is being read while
+// fonts load in parallel. RootLayoutInner keeps the splash screen up until
+// this settles — without that, the very first frame could render a screen
+// against an empty Bible now that the verse text loads lazily.
+const bibleReady = loadSavedTranslation();
 
 /** Decides between the locked PIN screen and the real app, once app-lock
  * settings have loaded. Kept separate from RootLayout so it can read the
@@ -52,15 +57,26 @@ function Gate() {
 
 function RootLayoutInner() {
   const [fontsLoaded, fontError] = useFonts(fontsToLoad);
+  const [bibleLoaded, setBibleLoaded] = useState(false);
   const colors = useColors();
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    let alive = true;
+    bibleReady.then(() => {
+      if (alive) setBibleLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && bibleLoaded) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, bibleLoaded]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !bibleLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.navy }} />;
   }
 

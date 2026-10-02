@@ -6,12 +6,16 @@ import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { OpenBookIcon } from "./icons";
 import { PinPad } from "./PinPad";
+import { getLockoutRemainingMs } from "@/data/appLock";
 
 /** Full-screen PIN gate shown when app lock is on and the app is locked. */
 export function LockScreen({ onUnlock }: { onUnlock: (pin: string) => Promise<boolean> }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState(false);
   const [checking, setChecking] = useState(false);
+  /** Non-zero while the app is deliberately refusing attempts after too
+   * many wrong PINs (see src/data/appLock.ts). */
+  const [lockoutMs, setLockoutMs] = useState(0);
   const shake = useRef(new Animated.Value(0)).current;
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -19,11 +23,12 @@ export function LockScreen({ onUnlock }: { onUnlock: (pin: string) => Promise<bo
   useEffect(() => {
     if (value.length < 4 || checking) return;
     setChecking(true);
-    onUnlock(value).then((ok) => {
+    onUnlock(value).then(async (ok) => {
       setChecking(false);
       if (!ok) {
         setError(true);
         setValue("");
+        setLockoutMs(await getLockoutRemainingMs());
         Animated.sequence([
           Animated.timing(shake, { toValue: 1, duration: 60, useNativeDriver: true }),
           Animated.timing(shake, { toValue: -1, duration: 60, useNativeDriver: true }),
@@ -34,6 +39,14 @@ export function LockScreen({ onUnlock }: { onUnlock: (pin: string) => Promise<bo
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
+
+  // Counts the lockout down once a second, so the message moves with it
+  // instead of sitting on a stale number until the next attempt.
+  useEffect(() => {
+    if (lockoutMs <= 0) return;
+    const timer = setTimeout(() => setLockoutMs((ms) => Math.max(0, ms - 1000)), 1000);
+    return () => clearTimeout(timer);
+  }, [lockoutMs]);
 
   function handleChange(next: string) {
     if (error) setError(false);
@@ -48,8 +61,12 @@ export function LockScreen({ onUnlock }: { onUnlock: (pin: string) => Promise<bo
           <Text style={styles.brandText}>Amani</Text>
         </View>
         <Text style={styles.title}>Enter your PIN</Text>
-        <Text style={[styles.subtitle, error && styles.subtitleError]}>
-          {error ? "Incorrect PIN — try again" : "Your notes are locked for privacy"}
+        <Text style={[styles.subtitle, (error || lockoutMs > 0) && styles.subtitleError]}>
+          {lockoutMs > 0
+            ? `Too many attempts — try again in ${Math.ceil(lockoutMs / 1000)}s`
+            : error
+            ? "Incorrect PIN — try again"
+            : "Your notes are locked for privacy"}
         </Text>
 
         <Animated.View

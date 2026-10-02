@@ -177,6 +177,10 @@ export default function BibleReadScreen() {
     };
   }, []);
 
+  // `getChapter` reads the app-wide active Bible rather than a React value —
+  // translationCode is the re-render trigger for that, which the linter can't
+  // see.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const verses = useMemo(() => getChapter(book, chapter), [book, chapter, translationCode]);
   useEffect(() => {
     if (!ready) return;
@@ -381,8 +385,9 @@ export default function BibleReadScreen() {
               return (
                 <Text
                   key={v.verse}
-                  onPress={() => openVerse(v.verse, v.text)}
+                  onPress={isNote ? undefined : () => openVerse(v.verse, v.text)}
                   style={[
+                    isNote && styles.verseNote,
                     hl && { backgroundColor: hl.background, color: hl.text },
                     isFocused(v.verse) && styles.paragraphFocused,
                   ]}

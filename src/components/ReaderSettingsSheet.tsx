@@ -43,7 +43,7 @@ export function ReaderSettingsSheet({ visible, onClose }: { visible: boolean; on
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       {/* A short scrim so the text behind stays visible while adjusting. */}
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close reading settings" />
-      <View style={styles.sheet}>
+      <View style={styles.sheet} accessibilityViewIsModal>
         <View style={styles.grabber} />
         <Text style={styles.title}>Reading settings</Text>
 

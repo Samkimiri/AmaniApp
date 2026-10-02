@@ -33,7 +33,14 @@ export default function HomeScreen() {
   const { notes } = useNotes();
   const latest = notes[0];
   const translationCode = useActiveTranslation();
-  const verseOfTheDay = React.useMemo(() => getVerseOfTheDay(), [translationCode]);
+  const verseOfTheDay = React.useMemo(
+    () => getVerseOfTheDay(),
+    // getVerseOfTheDay reads the app-wide active Bible, not a React value —
+    // translationCode is the re-render trigger for that, which the linter
+    // can't see.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [translationCode]
+  );
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -78,7 +85,7 @@ export default function HomeScreen() {
             <Text style={styles.brandText}>Amani</Text>
           </View>
           <View style={styles.avatar}>
-            <UserIcon size={18} color="#7A6A45" />
+            <UserIcon size={18} color={colors.avatarIcon} />
           </View>
         </View>
 
@@ -146,7 +153,12 @@ export default function HomeScreen() {
       </ScrollView>
 
       {verseOfTheDay ? (
-        <View style={[styles.offscreen, { pointerEvents: "none" }]}>
+        <View
+          style={[styles.offscreen, { pointerEvents: "none" }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          aria-hidden
+        >
           <VerseImageCard ref={shotRef} verseText={verseOfTheDay.text} reference={verseOfTheDay.reference} footerTitle="Verse of the Day" />
         </View>
       ) : null}
@@ -192,7 +204,7 @@ function makeStyles(colors: ColorPalette) {
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: "#EFE7D8",
+      backgroundColor: colors.avatarBg,
       alignItems: "center",
       justifyContent: "center",
     },

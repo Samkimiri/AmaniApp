@@ -2,8 +2,13 @@
  * Offline scripture engine, with five bundled public-domain translations.
  *
  * - **KJV** (King James Version, 1611) — the original translation this
- *   app shipped with. Imported directly as a JS module so it's available
- *   instantly with no loading state, exactly as before.
+ *   app shipped with, and the default. Its verse text is loaded lazily
+ *   too (it used to be inlined, which made the initial JS bundle ~5MB and
+ *   the slowest part of a cold start); only its book list and
+ *   abbreviations stay inlined, in bundled/kjv-books.json, so reference
+ *   parsing and chapter counts work without waiting on the text.
+ *   app/_layout.tsx holds the splash screen until this first translation
+ *   has loaded.
  * - **WEB** (World English Bible) — a modern-English public-domain
  *   translation (explicitly released copyright-free by its translators),
  *   converted from the public JSON dataset at
@@ -27,15 +32,15 @@
  *   occurrence of the word "God" (an artifact of how its source
  *   markup was stripped, e.g. "AndGod said") — fixed at conversion time.
  *
- * Every translation past the first (WEB, ASV, Darby, YLT) is loaded
- * lazily as a binary *asset* (via expo-asset) rather than a second
- * `import` — two ~4MB translations both inlined as JS object literals
- * crashes the Hermes bytecode compiler on Android release builds
- * (verified directly: one inlined translation builds fine, two does
- * not). Loading them as assets keeps them out of the JS bundle Hermes
- * has to compile; each is fetched once, the first time someone switches
- * to it, and cached in memory after that. See metro.config.js for the
- * matching resolver config.
+ * Every translation's text (KJV, WEB, ASV, Darby, YLT) is loaded lazily as
+ * a binary *asset* (via expo-asset) rather than an `import` — two ~4MB
+ * translations both inlined as JS object literals crashes the Hermes
+ * bytecode compiler on Android release builds (verified directly: one
+ * inlined translation builds fine, two does not). Loading them as assets
+ * keeps them out of the JS bundle Hermes has to compile (and off the
+ * initial web download's critical path); each is fetched once and cached
+ * in memory after that. See metro.config.js for the matching resolver
+ * config.
  *
  * All of these still work with zero network connection once loaded —
  * this is about *bundle format*, not about needing a server. Adding a
@@ -47,7 +52,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system";
-import kjvRaw from "./bundled/kjv.json";
+import kjvMeta from "./bundled/kjv-books.json";
 
 type ChapterMap = Record<string, Record<string, string>>;
 interface BibleData {
@@ -61,12 +66,18 @@ interface BibleData {
 
 export type TranslationCode = "KJV" | "WEB" | "ASV" | "DARBY" | "YLT";
 
-const KJV: BibleData = kjvRaw as unknown as BibleData;
+/**
+ * Book order, abbreviations and translation metadata for the KJV — a few
+ * KB, kept *inlined* in the JS bundle so book names, reference parsing and
+ * chapter counts work synchronously, before any verse text has loaded.
+ * The ~4MB of verse text is loaded lazily, like every other translation.
+ */
+const KJV_META = kjvMeta as unknown as Omit<BibleData, "text">;
 
 // Known ahead of time so the picker UI can show translation names before
 // the (lazily-loaded) translation data itself has ever been fetched.
 const TRANSLATION_META: Record<TranslationCode, { name: string; license: string; description: string }> = {
-  KJV: { name: KJV.name, license: KJV.license, description: "1611 · Classic, traditional English" },
+  KJV: { name: KJV_META.name, license: KJV_META.license, description: "1611 · Classic, traditional English" },
   WEB: { name: "World English Bible", license: "Public domain", description: "Modern English · Easy to read" },
   ASV: { name: "American Standard Version", license: "Public domain", description: "1901 · Literal, word-for-word" },
   DARBY: { name: "Darby Translation", license: "Public domain", description: "1890 · Literal, by J. N. Darby" },
@@ -77,13 +88,12 @@ export const AVAILABLE_TRANSLATIONS: { code: TranslationCode; name: string; desc
   Object.keys(TRANSLATION_META) as TranslationCode[]
 ).map((code) => ({ code, name: TRANSLATION_META[code].name, description: TRANSLATION_META[code].description }));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const webAssetModule = require("./bundled/web.bibledata");
-let webBibleCache: BibleData | null = null;
-
-async function loadWebBible(): Promise<BibleData> {
-  if (webBibleCache) return webBibleCache;
-  const asset = Asset.fromModule(webAssetModule);
+/** Shared loader for a bundled `.bibledata` asset — plain JSON despite the
+ * extension (see the comment in metro.config.js). Kept out of the JS
+ * bundle so Hermes (and the browser) never have to parse ~4MB of object
+ * literal on startup. */
+async function loadBibleAsset(moduleRef: number): Promise<BibleData> {
+  const asset = Asset.fromModule(moduleRef);
   let text: string;
   if (Platform.OS === "web") {
     text = await fetch(asset.uri).then((r) => r.text());
@@ -91,68 +101,49 @@ async function loadWebBible(): Promise<BibleData> {
     await asset.downloadAsync();
     text = await FileSystem.readAsStringAsync(asset.localUri ?? asset.uri);
   }
-  webBibleCache = JSON.parse(text) as BibleData;
-  return webBibleCache;
+  return JSON.parse(text) as BibleData;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const asvAssetModule = require("./bundled/asv.bibledata");
-let asvBibleCache: BibleData | null = null;
-
-async function loadAsvBible(): Promise<BibleData> {
-  if (asvBibleCache) return asvBibleCache;
-  const asset = Asset.fromModule(asvAssetModule);
-  let text: string;
-  if (Platform.OS === "web") {
-    text = await fetch(asset.uri).then((r) => r.text());
-  } else {
-    await asset.downloadAsync();
-    text = await FileSystem.readAsStringAsync(asset.localUri ?? asset.uri);
-  }
-  asvBibleCache = JSON.parse(text) as BibleData;
-  return asvBibleCache;
+/** Wraps `loadBibleAsset` with a per-translation in-memory cache, so each
+ * translation is read from disk/network at most once per session. */
+function lazyBibleLoader(moduleRef: number): () => Promise<BibleData> {
+  let cache: BibleData | null = null;
+  return async () => {
+    if (!cache) cache = await loadBibleAsset(moduleRef);
+    return cache;
+  };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const darbyAssetModule = require("./bundled/darby.bibledata");
-let darbyBibleCache: BibleData | null = null;
-
-async function loadDarbyBible(): Promise<BibleData> {
-  if (darbyBibleCache) return darbyBibleCache;
-  const asset = Asset.fromModule(darbyAssetModule);
-  let text: string;
-  if (Platform.OS === "web") {
-    text = await fetch(asset.uri).then((r) => r.text());
-  } else {
-    await asset.downloadAsync();
-    text = await FileSystem.readAsStringAsync(asset.localUri ?? asset.uri);
-  }
-  darbyBibleCache = JSON.parse(text) as BibleData;
-  return darbyBibleCache;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const yltAssetModule = require("./bundled/ylt.bibledata");
-let yltBibleCache: BibleData | null = null;
-
-async function loadYltBible(): Promise<BibleData> {
-  if (yltBibleCache) return yltBibleCache;
-  const asset = Asset.fromModule(yltAssetModule);
-  let text: string;
-  if (Platform.OS === "web") {
-    text = await fetch(asset.uri).then((r) => r.text());
-  } else {
-    await asset.downloadAsync();
-    text = await FileSystem.readAsStringAsync(asset.localUri ?? asset.uri);
-  }
-  yltBibleCache = JSON.parse(text) as BibleData;
-  return yltBibleCache;
-}
+/* eslint-disable @typescript-eslint/no-var-requires */
+const loadKjvBible = lazyBibleLoader(require("./bundled/kjv.bibledata"));
+const loadWebBible = lazyBibleLoader(require("./bundled/web.bibledata"));
+const loadAsvBible = lazyBibleLoader(require("./bundled/asv.bibledata"));
+const loadDarbyBible = lazyBibleLoader(require("./bundled/darby.bibledata"));
+const loadYltBible = lazyBibleLoader(require("./bundled/ylt.bibledata"));
+/* eslint-enable @typescript-eslint/no-var-requires */
 
 const STORAGE_KEY = "amani.translation.v1";
 let activeCode: TranslationCode = "KJV";
-let bible: BibleData = KJV;
+// Holds the *active* translation's full data (metadata plus verse text).
+// Until the first load resolves it's metadata-only, so everything that
+// doesn't need verse text (book lists, reference parsing) keeps working;
+// app/_layout.tsx waits for the real load before rendering any screen.
+let bible: BibleData = { ...KJV_META, text: {} };
 const listeners = new Set<() => void>();
+
+interface SearchRow {
+  book: string;
+  chapter: number;
+  verse: number;
+  reference: string;
+  text: string;
+  lower: string;
+}
+
+// Built once per translation, rather than re-lowercasing all ~31,000
+// verses on every keystroke of a keyword search; dropped whenever the
+// active translation changes.
+let searchIndex: SearchRow[] | null = null;
 
 export function getActiveTranslationCode(): TranslationCode {
   return activeCode;
@@ -161,7 +152,7 @@ export function getActiveTranslationCode(): TranslationCode {
 async function resolveTranslationData(code: TranslationCode): Promise<BibleData> {
   switch (code) {
     case "KJV":
-      return KJV;
+      return loadKjvBible();
     case "WEB":
       return loadWebBible();
     case "ASV":
@@ -173,29 +164,49 @@ async function resolveTranslationData(code: TranslationCode): Promise<BibleData>
   }
 }
 
-export async function setActiveTranslation(code: TranslationCode): Promise<void> {
-  if (code === activeCode) return;
-  const data = await resolveTranslationData(code);
+function applyTranslation(code: TranslationCode, data: BibleData): void {
   activeCode = code;
   bible = data;
+  searchIndex = null;
   listeners.forEach((fn) => fn());
+}
+
+export async function setActiveTranslation(code: TranslationCode): Promise<void> {
+  // The very first load installs the text for whatever code was already
+  // active (see loadSavedTranslation), which hasn't happened yet — so a
+  // same-code call still needs to do the work in that one case.
+  if (code === activeCode && Object.keys(bible.text).length > 0) return;
+  const data = await resolveTranslationData(code);
+  applyTranslation(code, data);
   await AsyncStorage.setItem(STORAGE_KEY, code).catch(() => {});
 }
 
-/** Loads the last-chosen translation, if different from the default.
- * Call once, early, at app start — see app/_layout.tsx. */
+/**
+ * Loads the translation this session should start in (the saved one, or
+ * KJV), *including* its verse text, and resolves once that's in memory.
+ * Called once, early, at app start — app/_layout.tsx holds the splash
+ * screen until this settles, so no screen ever renders against an empty
+ * Bible. A failure (first run with no connection, so the asset can't be
+ * fetched) is retried once and then given up on rather than blocking the
+ * app forever: taking notes is the core of Amani and works either way.
+ */
 export async function loadSavedTranslation(): Promise<void> {
+  let code: TranslationCode = "KJV";
   try {
     const saved = await AsyncStorage.getItem(STORAGE_KEY);
-    if (saved && saved in TRANSLATION_META && saved !== activeCode) {
-      const code = saved as TranslationCode;
-      const data = await resolveTranslationData(code);
-      activeCode = code;
-      bible = data;
-      listeners.forEach((fn) => fn());
-    }
+    if (saved && saved in TRANSLATION_META) code = saved as TranslationCode;
   } catch {
     // fall back to the default silently
+  }
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const data = await resolveTranslationData(code);
+      applyTranslation(code, data);
+      return;
+    } catch (err) {
+      if (attempt === 1) console.warn("Amani couldn't load the Bible text:", err);
+    }
   }
 }
 
@@ -227,10 +238,20 @@ export const TRANSLATION = {
   },
 };
 
+/**
+ * Test-only seam. Verse text now lives in a bundled asset that Jest can't
+ * fetch, and running the real ~4MB text through Babel made the suite take
+ * minutes. Tests prime the small fixture in __fixtures__/kjvMini.json
+ * through this instead; everything below the loader is exercised as-is.
+ */
+export function __setBibleDataForTests(data: BibleData): void {
+  applyTranslation("KJV", data);
+}
+
 // Book names/order are identical across bundled translations (the WEB
-// dataset was built directly from this same list) — fixed to KJV's copy
-// so it's available before WEB has ever been loaded.
-export const BOOKS = KJV.books;
+// dataset was built directly from this same list) — taken from the
+// inlined KJV metadata so it's available before any text has loaded.
+export const BOOKS = KJV_META.books;
 
 export interface VerseResult {
   book: string;
@@ -353,30 +374,56 @@ export function getVerseCandidates(input: string, limit = 5): VerseResult[] {
   }));
 }
 
+/**
+ * Builds (once per translation) a flat, lowercased index of every verse.
+ * The previous implementation called `.toLowerCase()` on all ~31,000
+ * verses on *every* keystroke of a keyword search, which stuttered on
+ * low-end devices; this pays that cost once and then does a plain
+ * substring test per row, in canonical book/chapter/verse order.
+ */
+function getSearchIndex(): SearchRow[] {
+  if (searchIndex) return searchIndex;
+  const rows: SearchRow[] = [];
+  for (const book of BOOKS) {
+    const chapters = bible.text[book];
+    if (!chapters) continue;
+    for (const chapterKey of Object.keys(chapters)) {
+      const chapter = Number(chapterKey);
+      const verses = chapters[chapterKey];
+      for (const verseKey of Object.keys(verses)) {
+        const verse = Number(verseKey);
+        const text = verses[verseKey];
+        rows.push({
+          book,
+          chapter,
+          verse,
+          reference: formatReference(book, chapter, verse),
+          text,
+          lower: text.toLowerCase(),
+        });
+      }
+    }
+  }
+  searchIndex = rows;
+  return rows;
+}
+
 /** Plain keyword search across the whole bundled translation. */
 export function searchKeyword(query: string, limit = 30): VerseResult[] {
   const q = query.trim().toLowerCase();
   if (q.length < 3) return [];
   const results: VerseResult[] = [];
 
-  outer: for (const book of BOOKS) {
-    const chapters = bible.text[book];
-    if (!chapters) continue;
-    for (const chapterKey of Object.keys(chapters)) {
-      const verses = chapters[chapterKey];
-      for (const verseKey of Object.keys(verses)) {
-        const text = verses[verseKey];
-        if (text.toLowerCase().includes(q)) {
-          results.push({
-            book,
-            chapter: Number(chapterKey),
-            verse: Number(verseKey),
-            text,
-            reference: formatReference(book, Number(chapterKey), Number(verseKey)),
-          });
-          if (results.length >= limit) break outer;
-        }
-      }
+  outer: for (const row of getSearchIndex()) {
+    if (row.lower.includes(q)) {
+      results.push({
+        book: row.book,
+        chapter: row.chapter,
+        verse: row.verse,
+        text: row.text,
+        reference: row.reference,
+      });
+      if (results.length >= limit) break outer;
     }
   }
   return results;

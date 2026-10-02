@@ -8,7 +8,7 @@ import { useColors } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { useAlert } from "@/context/AlertContext";
 import { fontFamily } from "@/theme/typography";
-import { BookmarkIcon, ClipboardIcon, HighlightIcon, ImageCardIcon, PlusIcon } from "@/components/icons";
+import { BookmarkIcon, ClipboardIcon, ImageCardIcon, PlusIcon } from "@/components/icons";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { VerseImageCard, VERSE_CARD_HEIGHT, VERSE_CARD_WIDTH } from "@/components/VerseImageCard";
 import { TRANSLATION, VerseResult } from "@/data/bible";
@@ -123,7 +123,7 @@ export function VerseActionSheet({ verse, onClose, onChanged }: Props) {
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close verse actions" />
-      <View style={styles.sheet}>
+      <View style={styles.sheet} accessibilityViewIsModal>
         <View style={styles.grabber} />
         <Text style={styles.reference}>
           {verse.reference} · {TRANSLATION.code}
@@ -178,7 +178,12 @@ export function VerseActionSheet({ verse, onClose, onChanged }: Props) {
       </View>
 
       {/* Offscreen render target for the shareable verse-card image. */}
-      <View style={[styles.offscreen, { pointerEvents: "none" }]}>
+      <View
+        style={[styles.offscreen, { pointerEvents: "none" }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        aria-hidden
+      >
         <VerseImageCard
           ref={shotRef}
           verseText={verse.text}

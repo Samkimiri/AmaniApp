@@ -47,7 +47,7 @@ export default function SettingsScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.avatarLarge}>
-          <UserIcon size={30} color="#7A6A45" />
+          <UserIcon size={30} color={colors.avatarIcon} />
         </View>
         <Text style={styles.name}>Your notes, on this device</Text>
         <Text style={styles.subtitle}>
@@ -148,7 +148,7 @@ function makeStyles(colors: ColorPalette) {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: "#EFE7D8",
+      backgroundColor: colors.avatarBg,
       alignItems: "center",
       justifyContent: "center",
       marginTop: 12,

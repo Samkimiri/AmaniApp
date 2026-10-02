@@ -30,9 +30,23 @@ export interface ColorPalette {
 
   verseBg: string;
   verseText: string;
+  /** Border paired with `verseBg` (tinted pills/banners that would look
+   * washed out with the generic `border`). */
+  verseBorder: string;
+
+  /** Neutral raised surface for controls that sit on `background`
+   * (the note editor's formatting buttons). */
+  surfaceMuted: string;
+  /** The avatar circle + the icon inside it. */
+  avatarBg: string;
+  avatarIcon: string;
+  /** The little drag handle at the top of a bottom sheet. */
+  grabber: string;
 
   success: string;
   danger: string;
+  /** Paired with `danger` for the tinted icon chip behind a destructive row. */
+  dangerBg: string;
 
   white: string;
   scrim: string;
@@ -60,9 +74,16 @@ export const lightColors: ColorPalette = {
 
   verseBg: "#FBF1DE",
   verseText: "#8A5A00",
+  verseBorder: "#F0E1BC",
+
+  surfaceMuted: "#F5F2EA",
+  avatarBg: "#EFE7D8",
+  avatarIcon: "#7A6A45",
+  grabber: "#E2DED2",
 
   success: "#3FA66A",
   danger: "#C0392B",
+  dangerBg: "#FBEAE6",
 
   white: "#FFFFFF",
   scrim: "rgba(17,24,39,0.42)",
@@ -88,9 +109,16 @@ export const darkColors: ColorPalette = {
 
   verseBg: "#2A2311",
   verseText: "#E3C077",
+  verseBorder: "#4A3E22",
+
+  surfaceMuted: "#232D39",
+  avatarBg: "#33291A",
+  avatarIcon: "#D3BA84",
+  grabber: "#39434F",
 
   success: "#4FBE7E",
   danger: "#E0685A",
+  dangerBg: "#3A231E",
 
   white: "#FFFFFF",
   scrim: "rgba(0,0,0,0.6)",
@@ -125,9 +153,16 @@ export const readingColors: ColorPalette = {
 
   verseBg: "#EDE0BE",
   verseText: "#6B4A15",
+  verseBorder: "#D8C79C",
+
+  surfaceMuted: "#EFE6D2",
+  avatarBg: "#EADFC6",
+  avatarIcon: "#6E5A3A",
+  grabber: "#D8CBB0",
 
   success: "#4B7A4A",
   danger: "#A6412C",
+  dangerBg: "#F2DDD4",
 
   white: "#FFFFFF",
   scrim: "rgba(59,47,30,0.42)",

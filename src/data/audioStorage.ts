@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import * as FileSystem from "expo-file-system";
+import { idbDelete, idbGet, idbPut, openIndexedDb } from "./indexedDb";
 
 /**
  * Where expo-av actually writes a fresh recording is NOT guaranteed to
@@ -22,16 +23,7 @@ const WEB_URI_PREFIX = "amani-audio-idb:";
 const NATIVE_AUDIO_DIR = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}amani-audio/` : null;
 
 function openWebDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(WEB_DB_NAME, 1);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(WEB_STORE_NAME)) {
-        request.result.createObjectStore(WEB_STORE_NAME);
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  return openIndexedDb(WEB_DB_NAME, WEB_STORE_NAME);
 }
 
 interface StoredClip {
@@ -48,22 +40,12 @@ async function putWebClip(id: string, blob: Blob): Promise<void> {
   const data = await blob.arrayBuffer();
   const record: StoredClip = { data, mimeType: blob.type || "audio/webm" };
   const db = await openWebDb();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(WEB_STORE_NAME, "readwrite");
-    tx.objectStore(WEB_STORE_NAME).put(record, id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  await idbPut(db, WEB_STORE_NAME, id, record);
 }
 
 async function getWebClip(id: string): Promise<Blob | undefined> {
   const db = await openWebDb();
-  const record = await new Promise<StoredClip | undefined>((resolve, reject) => {
-    const tx = db.transaction(WEB_STORE_NAME, "readonly");
-    const request = tx.objectStore(WEB_STORE_NAME).get(id);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  const record = await idbGet<StoredClip>(db, WEB_STORE_NAME, id);
   if (!record) return undefined;
   return new Blob([record.data], { type: record.mimeType });
 }
@@ -130,12 +112,7 @@ export async function deleteRecording(uri: string): Promise<void> {
     if (!uri.startsWith(WEB_URI_PREFIX)) return;
     const id = uri.slice(WEB_URI_PREFIX.length);
     const db = await openWebDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(WEB_STORE_NAME, "readwrite");
-      tx.objectStore(WEB_STORE_NAME).delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+    await idbDelete(db, WEB_STORE_NAME, id);
     return;
   }
   await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});

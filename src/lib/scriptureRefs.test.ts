@@ -1,5 +1,15 @@
 import { extractNoteReferences, extractReferences } from "./scriptureRefs";
 import { SermonNote } from "@/types/note";
+import { __setBibleDataForTests } from "@/data/bible";
+import kjvFixture from "../../__fixtures__/kjvMini.json";
+
+// Reference extraction validates each match against the real Bible text
+// ("John 3:99" has to be rejected, "John 3:16" accepted), so the fixture
+// stands in for the bundled text that normally loads from an asset at
+// runtime — see the note in src/data/bible.test.ts.
+beforeAll(() => {
+  __setBibleDataForTests(kjvFixture as Parameters<typeof __setBibleDataForTests>[0]);
+});
 
 describe("extractReferences", () => {
   it("finds a plain reference", () => {

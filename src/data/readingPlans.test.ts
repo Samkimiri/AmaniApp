@@ -7,6 +7,15 @@ import {
   nextDayIndex,
   splitIntoDays,
 } from "./readingPlans";
+import { __setBibleDataForTests } from "./bible";
+import kjvFixture from "../../__fixtures__/kjvMini.json";
+
+// Reading plans are built from the Bible's real chapter counts, which come
+// from the verse text — loaded from an asset at runtime, so the fixture
+// stands in for it here. See the note in src/data/bible.test.ts.
+beforeAll(() => {
+  __setBibleDataForTests(kjvFixture as Parameters<typeof __setBibleDataForTests>[0]);
+});
 
 describe("splitIntoDays", () => {
   it("keeps order, loses nothing and never leaves a day empty", () => {

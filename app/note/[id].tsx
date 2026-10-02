@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   NativeSyntheticEvent,
@@ -41,6 +40,7 @@ import {
   UndoIcon,
 } from "@/components/icons";
 import { VerseCallout } from "@/components/VerseCallout";
+import { NoteImage } from "@/components/NoteImage";
 import { MarkdownPreview } from "@/components/MarkdownPreview";
 import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { SwipeToDelete } from "@/components/SwipeToDelete";
@@ -48,32 +48,16 @@ import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "@/lib/speechRecognition";
 import { ShareSheet } from "@/components/ShareSheet";
 import { getVerseCandidates, useActiveTranslation, VerseResult } from "@/data/bible";
-import { notesStore } from "@/data/notesStore";
+import { notesStore, deleteBlockMedia } from "@/data/notesStore";
 import { persistRecording, resolvePlayableUri, resolvePlayableUriAsDataUrl } from "@/data/audioStorage";
+import { persistImage } from "@/data/imageStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
 import { getNoteTemplate } from "@/data/noteTemplates";
 import { extractNoteReferences, ScriptureRef } from "@/lib/scriptureRefs";
 import { useAlert } from "@/context/AlertContext";
 import { useHint } from "@/hooks/useHint";
 import { HintBanner } from "@/components/HintBanner";
-
-function isBlankNote(note: SermonNote): boolean {
-  return (
-    !note.title.trim() &&
-    !note.church?.trim() &&
-    !note.preacher?.trim() &&
-    !(note.tags && note.tags.length > 0) &&
-    // A heading (or an all-empty checklist) counts as structure, not
-    // content — a fresh templated note (all headings, no typing yet)
-    // should still be discardable, same as a truly blank one.
-    note.blocks.every(
-      (b) =>
-        b.type === "heading" ||
-        (b.type === "text" && !b.text.trim()) ||
-        (b.type === "checklist" && b.items.every((i) => !i.text.trim()))
-    )
-  );
-}
+import { isBlankNote } from "@/lib/noteDraft";
 
 // How many undo steps to keep — generous for a single editing session
 // without letting the history array grow unbounded over a long one.
@@ -546,6 +530,10 @@ export default function NoteEditorScreen() {
 
   const verseSuggestions = useMemo<VerseResult[]>(
     () => (verseQuery.trim() ? getVerseCandidates(verseQuery, 4) : []),
+    // getVerseCandidates reads the app-wide active Bible rather than a React
+    // value — translationCode is the re-render trigger for that, which the
+    // linter can't see.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [verseQuery, translationCode]
   );
 
@@ -652,6 +640,11 @@ export default function NoteEditorScreen() {
   }
 
   function removeBlock(blockId: string) {
+    // Removing an audio block or a photo drops the stored file behind it
+    // too — until now only deleting the whole note cleaned up, so every
+    // recording or photo removed from an editor stayed in storage forever.
+    const removed = note.blocks.find((b) => b.id === blockId);
+    if (removed) void deleteBlockMedia(removed);
     setNote((n) => {
       const blocks = n.blocks.filter((b) => b.id !== blockId);
       // Never leave a note with zero blocks — there'd be nowhere left to
@@ -687,6 +680,23 @@ export default function NoteEditorScreen() {
     });
   }
 
+  /**
+   * Moves a freshly picked photo into durable storage, then adds the block.
+   * The photo used to be kept inline in the note as a base64 data: URI,
+   * which on Android (a ~6MB AsyncStorage database for everything) and on
+   * web (a ~5MB localStorage) a couple of photos can exceed — and the
+   * failure mode isn't a missing photo, it's that nothing saves at all.
+   */
+  async function addImageBlock(source: string) {
+    try {
+      const blockId = newId();
+      const uri = await persistImage(source, blockId);
+      appendBlock({ id: blockId, type: "image", uri });
+    } catch (err) {
+      showAlert({ title: "Couldn't add that photo", message: String(err) });
+    }
+  }
+
   async function capturePhoto() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
@@ -695,7 +705,7 @@ export default function NoteEditorScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled && result.assets[0]) {
-      appendBlock({ id: newId(), type: "image", uri: result.assets[0].uri });
+      await addImageBlock(result.assets[0].uri);
     }
   }
 
@@ -710,7 +720,7 @@ export default function NoteEditorScreen() {
       quality: 0.7,
     });
     if (!result.canceled && result.assets[0]) {
-      appendBlock({ id: newId(), type: "image", uri: result.assets[0].uri });
+      await addImageBlock(result.assets[0].uri);
     }
   }
 
@@ -1157,6 +1167,7 @@ export default function NoteEditorScreen() {
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Delete note"
+                accessibilityHint="Permanently removes this note from this device"
               >
                 <TrashIcon size={19} color={colors.danger} />
               </Pressable>
@@ -1411,7 +1422,7 @@ export default function NoteEditorScreen() {
             return (
               <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
                 <View style={styles.imageBlock}>
-                  <Image source={{ uri: block.uri }} style={styles.image} />
+                  <NoteImage uri={block.uri} style={styles.image} />
                   <View style={styles.imageCaption}>
                     <ImagePlaceholderIcon size={14} />
                     <TextInput
@@ -1574,7 +1585,7 @@ function makeStyles(colors: ColorPalette) {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F5F2EA",
+    backgroundColor: colors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1680,7 +1691,7 @@ function makeStyles(colors: ColorPalette) {
   checklistAddText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.gold },
   colorPickerRow: { marginTop: 8, paddingHorizontal: 2 },
   imageBlock: { borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-  image: { width: "100%", height: 180, backgroundColor: "#EFE7D8" },
+  image: { width: "100%", height: 180, backgroundColor: colors.avatarBg },
   imageCaption: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },
   imageCaptionText: { flex: 1, fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: colors.textSecondary, padding: 0 },
 
@@ -1750,7 +1761,7 @@ function makeStyles(colors: ColorPalette) {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: "#F5F2EA",
+    backgroundColor: colors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -1780,7 +1791,7 @@ function makeStyles(colors: ColorPalette) {
     width: 58,
     height: 50,
     borderRadius: 14,
-    backgroundColor: "#F5F2EA",
+    backgroundColor: colors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,

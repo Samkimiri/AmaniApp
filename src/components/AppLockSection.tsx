@@ -105,6 +105,8 @@ export function AppLockSection() {
         </View>
         <Switch
           value={enabled}
+          accessibilityLabel="App lock"
+          accessibilityHint="Requires a PIN to open Amani"
           onValueChange={(next) => {
             if (next) {
               setError(null);
@@ -156,7 +158,7 @@ export function AppLockSection() {
 
       <Modal visible={step !== null} transparent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.scrim}>
-          <View style={styles.sheet}>
+          <View style={styles.sheet} accessibilityViewIsModal>
             {step ? (
               <>
                 <Text style={styles.sheetTitle}>{modalCopy[step.kind].title}</Text>

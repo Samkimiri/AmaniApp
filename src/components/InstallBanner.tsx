@@ -37,7 +37,7 @@ function makeStyles(colors: ColorPalette) {
       gap: 12,
       backgroundColor: colors.verseBg,
       borderWidth: 1,
-      borderColor: "#F0E1BC",
+      borderColor: colors.verseBorder,
       borderRadius: 14,
       padding: 14,
       marginTop: 16,
@@ -52,6 +52,6 @@ function makeStyles(colors: ColorPalette) {
       justifyContent: "center",
     },
     title: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.verseText },
-    subtitle: { fontFamily: fontFamily.sansRegular, fontSize: 11.5, color: "#9A7B3D", marginTop: 1 },
+    subtitle: { fontFamily: fontFamily.sansRegular, fontSize: 11.5, color: colors.textMuted, marginTop: 1 },
   });
 }

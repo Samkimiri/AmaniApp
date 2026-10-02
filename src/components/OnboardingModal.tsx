@@ -55,7 +55,7 @@ export function OnboardingModal({ visible, onComplete }: { visible: boolean; onC
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={next}>
       <View style={styles.scrim}>
-        <View style={styles.card}>
+        <View style={styles.card} accessibilityViewIsModal>
           <Pressable
             onPress={() => {
               onComplete();

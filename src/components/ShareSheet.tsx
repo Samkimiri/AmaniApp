@@ -19,7 +19,8 @@ import {
 } from "./icons";
 import { VerseImageCard, VERSE_CARD_HEIGHT, VERSE_CARD_WIDTH } from "./VerseImageCard";
 import { shareVerseImageUri } from "@/lib/shareVerseImage";
-import { noteToHtml, noteToPlainText, SermonNote, VerseBlock } from "@/types/note";
+import { noteToPlainText, SermonNote, VerseBlock } from "@/types/note";
+import { noteToHtmlWithMedia } from "@/lib/noteExport";
 import { useAlert } from "@/context/AlertContext";
 import { useToast } from "@/context/ToastContext";
 
@@ -54,16 +55,16 @@ function verseOptionsFor(note: SermonNote): VerseOption[] {
   return options;
 }
 
-/** Opens the note's formatted HTML in a new tab and prints it — web
- * only. Lets the user pick "Save as PDF" in the browser's print dialog,
- * which is the standard way to get a real PDF out of a web page without
- * a native module or a client-side PDF library. */
-function printNoteInNewTab(note: SermonNote) {
+/** Opens the given HTML in a new tab and prints it — web only. Lets the
+ * user pick "Save as PDF" in the browser's print dialog, which is the
+ * standard way to get a real PDF out of a web page without a native module
+ * or a client-side PDF library. */
+function printHtmlInNewTab(html: string) {
   const win = window.open("", "_blank");
   if (!win) {
     throw new Error("Pop-up blocked — allow pop-ups for this site to save the note as a PDF.");
   }
-  win.document.write(noteToHtml(note));
+  win.document.write(html);
   win.document.close();
   win.focus();
   setTimeout(() => win.print(), 300);
@@ -124,15 +125,19 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
   async function sharePdf() {
     try {
       setBusy("pdf");
+      // Photos are resolved to self-contained data: URIs first — the note
+      // only stores a reference to them (IndexedDB / a file path), which
+      // neither a printed page nor a generated PDF can load.
+      const html = await noteToHtmlWithMedia(note);
       if (Platform.OS === "web") {
         // expo-print's web implementation ignores the html argument
         // entirely and just calls window.print() on the current page —
         // it can't produce a file at all on web. Open the formatted note
         // in a new tab and print *that*, so "Save as PDF" in the
         // browser's print dialog actually saves the note's content.
-        printNoteInNewTab(note);
+        printHtmlInNewTab(html);
       } else {
-        const { uri } = await Print.printToFileAsync({ html: noteToHtml(note) });
+        const { uri } = await Print.printToFileAsync({ html });
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
       }
     } catch (err) {
@@ -170,7 +175,7 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} />
-      <View style={styles.sheet}>
+      <View style={styles.sheet} accessibilityViewIsModal>
         <View style={styles.grabber} />
         <View style={styles.titleRow}>
           <View style={{ flex: 1 }}>
@@ -256,7 +261,7 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
         ) : null}
         <Row
           icon={<DocumentIcon />}
-          iconBg="#EEF2F6"
+          iconBg={colors.surfaceMuted}
           title="Full note (PDF)"
           subtitle="Note text and verse, formatted as a document"
           onPress={sharePdf}
@@ -264,31 +269,37 @@ export function ShareSheet({ visible, onClose, note, onDelete }: ShareSheetProps
         />
         <Row
           icon={<ClipboardIcon />}
-          iconBg="#EEF2F6"
+          iconBg={colors.surfaceMuted}
           title="Plain text"
           subtitle="Copy the note as text, for email or messages"
           onPress={copyText}
         />
         <Row
           icon={<LinkIcon />}
-          iconBg="#EEF2F6"
+          iconBg={colors.surfaceMuted}
           title="Amani link"
           subtitle="Opens inside Amani for a cell-group member who has the app"
           onPress={amaniLink}
         />
         <Row
           icon={<TrashIcon color={colors.danger} />}
-          iconBg="#FBEAE6"
+          iconBg={colors.dangerBg}
           title="Delete note"
           subtitle="Permanently remove this note from this device"
           onPress={confirmDelete}
+          hint="Permanently removes this note from this device"
           destructive
           last
         />
       </View>
 
       {/* Offscreen verse-card render target for image capture. */}
-      <View style={[styles.offscreen, { pointerEvents: "none" }]}>
+      <View
+        style={[styles.offscreen, { pointerEvents: "none" }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        aria-hidden
+      >
         <VerseImageCard
           ref={shotRef}
           verseText={verse?.text ?? note.title}
@@ -310,6 +321,7 @@ function Row({
   busy,
   last,
   destructive,
+  hint,
 }: {
   icon: React.ReactNode;
   iconBg: string;
@@ -319,6 +331,9 @@ function Row({
   busy?: boolean;
   last?: boolean;
   destructive?: boolean;
+  /** Extra context for screen readers, where the visible subtitle is more
+   * of a sales pitch than a description of what happens. */
+  hint?: string;
 }) {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -329,6 +344,7 @@ function Row({
       style={[styles.row, !last && styles.rowBorder, busy && { opacity: 0.5 }]}
       accessibilityRole="button"
       accessibilityLabel={title}
+      accessibilityHint={hint}
     >
       <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>{icon}</View>
       <View style={{ flex: 1 }}>
@@ -343,14 +359,14 @@ function makeStyles(colors: ColorPalette) {
   return StyleSheet.create({
   scrim: { flex: 1, backgroundColor: colors.scrim },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     paddingHorizontal: 22,
     paddingTop: 14,
     paddingBottom: 34,
   },
-  grabber: { width: 38, height: 4, borderRadius: 2, backgroundColor: "#E2DED2", alignSelf: "center", marginBottom: 16 },
+  grabber: { width: 38, height: 4, borderRadius: 2, backgroundColor: colors.grabber, alignSelf: "center", marginBottom: 16 },
   titleRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 12, gap: 12 },
   title: { fontFamily: fontFamily.serifBold, fontSize: 18, color: colors.textPrimary },
   subtitle: { fontFamily: fontFamily.sansMedium, fontSize: 12.5, color: colors.textMuted, marginTop: 2 },

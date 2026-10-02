@@ -56,8 +56,14 @@ export function formatDayReading(chapters: ChapterRef[]): string {
 let plansCache: ReadingPlan[] | null = null;
 
 export function getReadingPlans(): ReadingPlan[] {
-  if (plansCache) return plansCache;
-  plansCache = [
+  // `chapterCount` reads the verse text, which now loads asynchronously —
+  // building (and caching) these before it has arrived would leave every
+  // day of every plan empty. So only memoize once the text is really there;
+  // callers before that get a correctly-built list on demand.
+  const ready = BOOKS.length > 0 && chapterCount(BOOKS[0]) > 0;
+  if (plansCache && ready) return plansCache;
+
+  const plans: ReadingPlan[] = [
     {
       id: "proverbs-31",
       name: "Proverbs in a month",
@@ -89,7 +95,9 @@ export function getReadingPlans(): ReadingPlan[] {
       days: splitIntoDays(chaptersOf(BOOKS), 365),
     },
   ];
-  return plansCache;
+
+  if (ready) plansCache = plans;
+  return plans;
 }
 
 // ---- progress -------------------------------------------------------------

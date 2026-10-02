@@ -4,6 +4,7 @@ import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { notesStore } from "./notesStore";
 import { persistRecording, exportRecordingAsDataUrl } from "./audioStorage";
+import { persistImage, exportImageAsDataUrl } from "./imageStorage";
 import { SermonNote } from "@/types/note";
 
 /**
@@ -13,12 +14,13 @@ import { SermonNote } from "@/types/note";
  * download one file with everything in it, and restore from it later on
  * this device or a new one.
  *
- * Photos are already safe to include as-is: expo-image-picker's web
- * implementation hands back base64 data: URIs already, and native image
- * URIs point at files that get bundled below like audio does. Audio is
- * the one block type that needs converting on the way out (it's stored
- * in IndexedDB / the app's own file storage, not something a plain JSON
- * file can reference) and reconstructing on the way in.
+ * Every media block is rewritten on the way out so the exported JSON is
+ * self-contained: audio and photos both live in IndexedDB (web) or the
+ * app's own file storage (native), neither of which a plain JSON file can
+ * reference, so both become base64 `data:` URIs — and are turned back into
+ * stored media on the way in. (Photos used to be skipped here, which meant
+ * a backup taken on a phone contained bare `file://` paths: restoring it
+ * on another device left every photo broken.)
  */
 
 const BACKUP_APP_ID = "amani-backup";
@@ -31,15 +33,18 @@ interface BackupFile {
   notes: SermonNote[];
 }
 
-async function embedAudioForExport(note: SermonNote): Promise<SermonNote> {
+async function embedMediaForExport(note: SermonNote): Promise<SermonNote> {
   const blocks = await Promise.all(
     note.blocks.map(async (block) => {
-      if (block.type !== "audio") return block;
+      if (block.type !== "audio" && block.type !== "image") return block;
       try {
-        const dataUri = await exportRecordingAsDataUrl(block.uri);
+        const dataUri =
+          block.type === "audio"
+            ? await exportRecordingAsDataUrl(block.uri)
+            : await exportImageAsDataUrl(block.uri);
         return { ...block, uri: dataUri };
       } catch {
-        return block; // best effort — keep the note, drop just this clip
+        return block; // best effort — keep the note, drop just this file
       }
     })
   );
@@ -48,12 +53,12 @@ async function embedAudioForExport(note: SermonNote): Promise<SermonNote> {
 
 export async function buildBackupJson(): Promise<string> {
   const notes = await notesStore.getAll();
-  const withEmbeddedAudio = await Promise.all(notes.map(embedAudioForExport));
+  const withEmbeddedMedia = await Promise.all(notes.map(embedMediaForExport));
   const file: BackupFile = {
     app: BACKUP_APP_ID,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    notes: withEmbeddedAudio,
+    notes: withEmbeddedMedia,
   };
   return JSON.stringify(file, null, 2);
 }
@@ -134,9 +139,14 @@ export async function importBackup(jsonText: string): Promise<{ imported: number
     try {
       const blocks = await Promise.all(
         (note.blocks ?? []).map(async (block) => {
-          if (block.type !== "audio" || !block.uri.startsWith("data:")) return block;
+          if ((block.type !== "audio" && block.type !== "image") || !block.uri.startsWith("data:")) {
+            return block;
+          }
           try {
-            const persistedUri = await persistRecording(block.uri, block.id);
+            const persistedUri =
+              block.type === "audio"
+                ? await persistRecording(block.uri, block.id)
+                : await persistImage(block.uri, block.id);
             return { ...block, uri: persistedUri };
           } catch {
             return block;

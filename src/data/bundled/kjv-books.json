@@ -1,0 +1,342 @@
+{
+  "translation": "KJV",
+  "name": "King James Version",
+  "license": "Public domain",
+  "books": [
+    "Genesis",
+    "Exodus",
+    "Leviticus",
+    "Numbers",
+    "Deuteronomy",
+    "Joshua",
+    "Judges",
+    "Ruth",
+    "1 Samuel",
+    "2 Samuel",
+    "1 Kings",
+    "2 Kings",
+    "1 Chronicles",
+    "2 Chronicles",
+    "Ezra",
+    "Nehemiah",
+    "Esther",
+    "Job",
+    "Psalms",
+    "Proverbs",
+    "Ecclesiastes",
+    "Song of Solomon",
+    "Isaiah",
+    "Jeremiah",
+    "Lamentations",
+    "Ezekiel",
+    "Daniel",
+    "Hosea",
+    "Joel",
+    "Amos",
+    "Obadiah",
+    "Jonah",
+    "Micah",
+    "Nahum",
+    "Habakkuk",
+    "Zephaniah",
+    "Haggai",
+    "Zechariah",
+    "Malachi",
+    "Matthew",
+    "Mark",
+    "Luke",
+    "John",
+    "Acts",
+    "Romans",
+    "1 Corinthians",
+    "2 Corinthians",
+    "Galatians",
+    "Ephesians",
+    "Philippians",
+    "Colossians",
+    "1 Thessalonians",
+    "2 Thessalonians",
+    "1 Timothy",
+    "2 Timothy",
+    "Titus",
+    "Philemon",
+    "Hebrews",
+    "James",
+    "1 Peter",
+    "2 Peter",
+    "1 John",
+    "2 John",
+    "3 John",
+    "Jude",
+    "Revelation"
+  ],
+  "abbreviations": {
+    "Genesis": [
+      "gen",
+      "ge",
+      "gn"
+    ],
+    "Exodus": [
+      "exo",
+      "ex"
+    ],
+    "Leviticus": [
+      "lev",
+      "le"
+    ],
+    "Numbers": [
+      "num",
+      "nu"
+    ],
+    "Deuteronomy": [
+      "deut",
+      "deu",
+      "dt"
+    ],
+    "Joshua": [
+      "josh",
+      "jos"
+    ],
+    "Judges": [
+      "judg",
+      "jdg"
+    ],
+    "Ruth": [
+      "ruth",
+      "ru"
+    ],
+    "1 Samuel": [
+      "1sam",
+      "1sa",
+      "1 sam"
+    ],
+    "2 Samuel": [
+      "2sam",
+      "2sa",
+      "2 sam"
+    ],
+    "1 Kings": [
+      "1kgs",
+      "1ki",
+      "1 kgs"
+    ],
+    "2 Kings": [
+      "2kgs",
+      "2ki",
+      "2 kgs"
+    ],
+    "1 Chronicles": [
+      "1chr",
+      "1ch",
+      "1 chr"
+    ],
+    "2 Chronicles": [
+      "2chr",
+      "2ch",
+      "2 chr"
+    ],
+    "Ezra": [
+      "ezr"
+    ],
+    "Nehemiah": [
+      "neh"
+    ],
+    "Esther": [
+      "esth",
+      "est"
+    ],
+    "Job": [
+      "job"
+    ],
+    "Psalms": [
+      "ps",
+      "psa",
+      "psalm"
+    ],
+    "Proverbs": [
+      "prov",
+      "pro",
+      "prv"
+    ],
+    "Ecclesiastes": [
+      "eccl",
+      "ecc"
+    ],
+    "Song of Solomon": [
+      "song",
+      "sos",
+      "ss"
+    ],
+    "Isaiah": [
+      "isa"
+    ],
+    "Jeremiah": [
+      "jer"
+    ],
+    "Lamentations": [
+      "lam"
+    ],
+    "Ezekiel": [
+      "ezek",
+      "eze"
+    ],
+    "Daniel": [
+      "dan"
+    ],
+    "Hosea": [
+      "hos"
+    ],
+    "Joel": [
+      "joel",
+      "jl"
+    ],
+    "Amos": [
+      "amos",
+      "am"
+    ],
+    "Obadiah": [
+      "obad",
+      "oba"
+    ],
+    "Jonah": [
+      "jonah",
+      "jon"
+    ],
+    "Micah": [
+      "mic"
+    ],
+    "Nahum": [
+      "nah"
+    ],
+    "Habakkuk": [
+      "hab"
+    ],
+    "Zephaniah": [
+      "zeph",
+      "zep"
+    ],
+    "Haggai": [
+      "hag"
+    ],
+    "Zechariah": [
+      "zech",
+      "zec"
+    ],
+    "Malachi": [
+      "mal"
+    ],
+    "Matthew": [
+      "matt",
+      "mt"
+    ],
+    "Mark": [
+      "mark",
+      "mk"
+    ],
+    "Luke": [
+      "luke",
+      "lk"
+    ],
+    "John": [
+      "john",
+      "jn"
+    ],
+    "Acts": [
+      "acts",
+      "ac"
+    ],
+    "Romans": [
+      "rom",
+      "ro"
+    ],
+    "1 Corinthians": [
+      "1cor",
+      "1co",
+      "1 cor"
+    ],
+    "2 Corinthians": [
+      "2cor",
+      "2co",
+      "2 cor"
+    ],
+    "Galatians": [
+      "gal"
+    ],
+    "Ephesians": [
+      "eph"
+    ],
+    "Philippians": [
+      "phil",
+      "php"
+    ],
+    "Colossians": [
+      "col"
+    ],
+    "1 Thessalonians": [
+      "1thess",
+      "1th",
+      "1 thess"
+    ],
+    "2 Thessalonians": [
+      "2thess",
+      "2th",
+      "2 thess"
+    ],
+    "1 Timothy": [
+      "1tim",
+      "1ti",
+      "1 tim"
+    ],
+    "2 Timothy": [
+      "2tim",
+      "2ti",
+      "2 tim"
+    ],
+    "Titus": [
+      "titus",
+      "tit"
+    ],
+    "Philemon": [
+      "philem",
+      "phm"
+    ],
+    "Hebrews": [
+      "heb"
+    ],
+    "James": [
+      "james",
+      "jas"
+    ],
+    "1 Peter": [
+      "1pet",
+      "1pe",
+      "1 pet"
+    ],
+    "2 Peter": [
+      "2pet",
+      "2pe",
+      "2 pet"
+    ],
+    "1 John": [
+      "1john",
+      "1jn",
+      "1 jn"
+    ],
+    "2 John": [
+      "2john",
+      "2jn",
+      "2 jn"
+    ],
+    "3 John": [
+      "3john",
+      "3jn",
+      "3 jn"
+    ],
+    "Jude": [
+      "jude"
+    ],
+    "Revelation": [
+      "rev"
+    ]
+  }
+}

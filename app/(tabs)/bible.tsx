@@ -26,18 +26,24 @@ import { MemorizeCard } from "@/components/MemorizeCard";
 import { TranslationPicker } from "@/components/TranslationPicker";
 import { getHighlightColor } from "@/theme/highlightColors";
 
-const DEFAULT_VERSE: VerseResult = {
-  book: "John",
-  chapter: 3,
-  verse: 16,
-  text: getVerse("John", 3, 16) ?? "",
-  reference: "John 3:16",
-};
+// Built inside the component rather than at module scope: the Bible text
+// now loads asynchronously (see src/data/bible.ts), and module-scope code
+// runs long before that load finishes — this would have captured an empty
+// verse text on every launch.
+function defaultVerse(): VerseResult {
+  return {
+    book: "John",
+    chapter: 3,
+    verse: 16,
+    text: getVerse("John", 3, 16) ?? "",
+    reference: "John 3:16",
+  };
+}
 
 export default function BibleScreen() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<VerseResult[]>([]);
-  const [selected, setSelected] = useState<VerseResult>(DEFAULT_VERSE);
+  const [selected, setSelected] = useState<VerseResult>(defaultVerse);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);
   const [highlightColor, setHighlightColor] = useState<string | undefined>(undefined);
@@ -368,7 +374,7 @@ function makeStyles(colors: ColorPalette) {
     alignItems: "center",
     justifyContent: "center",
   },
-  actionButtonActive: { backgroundColor: colors.verseBg, borderColor: "#F0E1BC" },
+  actionButtonActive: { backgroundColor: colors.verseBg, borderColor: colors.verseBorder },
   readButton: {
     flex: 1,
     flexDirection: "row",

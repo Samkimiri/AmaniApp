@@ -47,7 +47,7 @@ export function TranslationPicker({ visible, onClose }: { visible: boolean; onCl
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={loading ? undefined : onClose}>
       <Pressable style={styles.scrim} onPress={loading ? undefined : onClose} />
-      <View style={styles.sheet}>
+      <View style={styles.sheet} accessibilityViewIsModal>
         <View style={styles.grabber} />
         <Text style={styles.title}>Bible version</Text>
         <Text style={styles.subtitle}>All versions are bundled in the app and work offline.</Text>

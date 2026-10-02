@@ -6,8 +6,10 @@
 // that one bundle plus the HTML shell is enough for the whole app to
 // work with zero connection. Bump CACHE_NAME on any change here to drop
 // stale caches from previously installed versions.
-const CACHE_NAME = "amani-cache-v2";
-const CORE_ASSETS = ["/manifest.json", "/icon.png", "/favicon.ico"];
+const CACHE_NAME = "amani-cache-v3";
+// `/favicon.png` rather than `/favicon.ico`: the .ico never existed, so this
+// precache entry failed with a 404 on every install.
+const CORE_ASSETS = ["/manifest.json", "/icon.png", "/favicon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
