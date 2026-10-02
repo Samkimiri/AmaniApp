@@ -13,15 +13,16 @@ import { SermonNote } from "@/types/note";
  */
 export function isBlankNote(note: SermonNote): boolean {
   return (
-    !note.title.trim() &&
+    !note.title?.trim() &&
     !note.church?.trim() &&
     !note.preacher?.trim() &&
     !(note.tags && note.tags.length > 0) &&
-    note.blocks.every(
+    (note.blocks ?? []).every(
       (b) =>
+        !b ||
         b.type === "heading" ||
-        (b.type === "text" && !b.text.trim()) ||
-        (b.type === "checklist" && b.items.every((i) => !i.text.trim()))
+        (b.type === "text" && !b.text?.trim()) ||
+        (b.type === "checklist" && (b.items ?? []).every((i) => !i?.text?.trim()))
     )
   );
 }

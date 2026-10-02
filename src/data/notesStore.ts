@@ -1,16 +1,33 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NoteBlock, SermonNote } from "@/types/note";
+import { newId, NoteBlock, SermonNote } from "@/types/note";
 import { deleteRecording } from "@/data/audioStorage";
 import { deleteImage } from "@/data/imageStorage";
 
 const STORAGE_KEY = "amani.notes.v1";
+
+function normalizeNote(n: any): SermonNote {
+  const createdAt = typeof n?.createdAt === "string" ? n.createdAt : new Date().toISOString();
+  const updatedAt = typeof n?.updatedAt === "string" ? n.updatedAt : createdAt;
+  return {
+    id: typeof n?.id === "string" ? n.id : newId(),
+    title: typeof n?.title === "string" ? n.title : "",
+    church: typeof n?.church === "string" ? n.church : "",
+    preacher: typeof n?.preacher === "string" ? n.preacher : "",
+    tags: Array.isArray(n?.tags) ? n.tags : [],
+    date: typeof n?.date === "string" ? n.date : "",
+    blocks: Array.isArray(n?.blocks) ? n.blocks : [],
+    createdAt,
+    updatedAt,
+  };
+}
 
 async function readAll(): Promise<SermonNote[]> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeNote);
   } catch {
     // Corrupt or missing local data shouldn't crash the app — start fresh.
     return [];
@@ -50,13 +67,13 @@ export async function deleteBlockMedia(block: NoteBlock): Promise<void> {
 /** Drops every clip and photo a deleted note owned, so storage doesn't
  * accumulate orphans. */
 export async function deleteNoteMedia(note: SermonNote): Promise<void> {
-  await Promise.all(note.blocks.map(deleteBlockMedia)).catch(() => {});
+  await Promise.all((note.blocks ?? []).map(deleteBlockMedia)).catch(() => {});
 }
 
 export const notesStore = {
   async getAll(): Promise<SermonNote[]> {
     const notes = await readAll();
-    return notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return notes.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
   },
 
   async getById(id: string): Promise<SermonNote | undefined> {

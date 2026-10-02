@@ -63,7 +63,7 @@ export interface ChecklistBlock {
 export type NoteBlock = TextBlock | HeadingBlock | VerseBlock | ImageBlock | AudioBlock | ChecklistBlock;
 
 export function firstAudioBlock(note: SermonNote): AudioBlock | undefined {
-  return note.blocks.find((b): b is AudioBlock => b.type === "audio");
+  return (note.blocks ?? []).find((b): b is AudioBlock => b && b.type === "audio");
 }
 
 export function formatDuration(millis: number): string {
@@ -92,7 +92,7 @@ export function newId(): string {
 
 /** First verse block in a note, if any — used for previews and the share card. */
 export function firstVerseBlock(note: SermonNote): VerseBlock | undefined {
-  return note.blocks.find((b): b is VerseBlock => b.type === "verse");
+  return (note.blocks ?? []).find((b): b is VerseBlock => b && b.type === "verse");
 }
 
 /** Plain-text rendering of a note, used for the "copy as text" share format. */
@@ -103,7 +103,7 @@ export function noteToPlainText(note: SermonNote): string {
   if (meta) lines.push(meta);
   if (note.tags && note.tags.length > 0) lines.push(note.tags.map((t) => `#${t}`).join(" "));
   lines.push("");
-  for (const block of note.blocks) {
+  for (const block of note.blocks ?? []) {
     if (block.type === "text" && block.text.trim()) {
       lines.push(block.text.trim());
     } else if (block.type === "heading" && block.text.trim()) {
@@ -138,7 +138,7 @@ export function noteToHtml(note: SermonNote, resolvedImages?: Record<string, str
     note.tags && note.tags.length > 0
       ? `<div style="margin-top:8px;font-size:14px;color:#8A5A00;">${note.tags.map((t) => `#${escapeHtml(t)}`).join("&nbsp;&nbsp;")}</div>`
       : "";
-  const body = note.blocks
+  const body = (note.blocks ?? [])
     .map((block) => {
       if (block.type === "text" && block.text.trim()) {
         return `<p style="font-size:18px;line-height:1.6;color:#1F2933;margin:0 0 12px;">${renderMarkdownLite(block.text)}</p>`;

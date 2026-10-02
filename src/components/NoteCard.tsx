@@ -19,8 +19,8 @@ export const NoteCard = React.memo(function NoteCard({
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const verse = firstVerseBlock(note);
   const audio = firstAudioBlock(note);
-  const previewBlock = note.blocks.find(
-    (b): b is Extract<typeof b, { type: "text" }> => b.type === "text" && b.text.trim().length > 0
+  const previewBlock = (note.blocks ?? []).find(
+    (b): b is Extract<typeof b, { type: "text" }> => b && b.type === "text" && (b.text?.trim()?.length ?? 0) > 0
   );
   const preview = previewBlock?.text;
 

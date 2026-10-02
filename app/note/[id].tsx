@@ -862,6 +862,14 @@ export default function NoteEditorScreen() {
   }
 
   async function goBack() {
+    // If navigating back from an existing note before it finishes loading,
+    // exit immediately to prevent treating the initial blank placeholder as a
+    // blank draft and accidentally removing the user's saved note.
+    if (!isNew && !loaded) {
+      router.back();
+      return;
+    }
+
     // Leaving mid-recording used to just abandon it — the mic/recorder
     // session was never stopped at all, leaking the resource (and on web,
     // leaving the browser's "microphone in use" indicator on) with no UI
@@ -1254,7 +1262,10 @@ export default function NoteEditorScreen() {
             </View>
           ) : null}
 
-          {note.blocks.map((block) => {
+          {(note.blocks ?? []).map((block) => {
+            // Defensive: skip any block that's null/undefined or has no type
+            // (possible with hand-edited backup files or very old data).
+            if (!block || !block.type) return null;
             if (block.type === "text") {
               // An empty block has nothing to render as a preview and needs
               // to be an obvious place to tap and start typing, so it's

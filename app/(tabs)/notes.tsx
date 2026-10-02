@@ -20,14 +20,16 @@ function noteSearchText(note: SermonNote): string {
     note.preacher,
     note.date,
     ...(note.tags ?? []),
-    ...note.blocks.map((b) => {
-      if (b.type === "text" || b.type === "heading") return b.text;
-      if (b.type === "verse") return `${b.reference} ${b.text}`;
+    ...(note.blocks ?? []).map((b) => {
+      if (!b) return "";
+      if (b.type === "text" || b.type === "heading") return b.text ?? "";
+      if (b.type === "verse") return `${b.reference ?? ""} ${b.text ?? ""}`;
       if (b.type === "audio") return b.transcript ?? "";
-      if (b.type === "checklist") return b.items.map((i) => i.text).join(" ");
+      if (b.type === "checklist") return (b.items ?? []).map((i) => i?.text ?? "").join(" ");
       return "";
     }),
   ]
+    .filter(Boolean)
     .join(" ")
     .toLowerCase();
 }
