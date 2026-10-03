@@ -1,41 +1,102 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { newId, NoteBlock, SermonNote } from "@/types/note";
+import { NoteBlock, SermonNote } from "@/types/note";
 import { deleteRecording } from "@/data/audioStorage";
 import { deleteImage } from "@/data/imageStorage";
+import { mergeNotes, needsRepair, normalizeNote, salvageNotes } from "@/data/notesRecovery";
 
 const STORAGE_KEY = "amani.notes.v1";
+/** The last payload we could read back in full. If the live key is ever
+ * unreadable, this is what "put the notes back the way they were" resolves
+ * to — so it is only ever moved forward after a successful live write. */
+const BACKUP_KEY = "amani.notes.backup.v1";
+/** An unreadable live payload, kept verbatim. Nothing is allowed to write
+ * the live key from a bad read, so the raw bytes survive to be salvaged. */
+const QUARANTINE_KEY = "amani.notes.quarantine.v1";
 
-function normalizeNote(n: any): SermonNote {
-  const createdAt = typeof n?.createdAt === "string" ? n.createdAt : new Date().toISOString();
-  const updatedAt = typeof n?.updatedAt === "string" ? n.updatedAt : createdAt;
-  return {
-    id: typeof n?.id === "string" ? n.id : newId(),
-    title: typeof n?.title === "string" ? n.title : "",
-    church: typeof n?.church === "string" ? n.church : "",
-    preacher: typeof n?.preacher === "string" ? n.preacher : "",
-    tags: Array.isArray(n?.tags) ? n.tags : [],
-    date: typeof n?.date === "string" ? n.date : "",
-    blocks: Array.isArray(n?.blocks) ? n.blocks : [],
-    createdAt,
-    updatedAt,
-  };
+interface ParsedNotes {
+  notes: SermonNote[];
+  /** The stored payload no longer matches the current format and should be
+   * rewritten, so the upgrade is persisted instead of reapplied each read. */
+  repaired: boolean;
 }
 
-async function readAll(): Promise<SermonNote[]> {
+/** Parses a payload we expect to be a JSON array of notes. Returns null when
+ * it can't be read as one — which every caller must treat as "recover",
+ * never as "the user has no notes". That distinction is the whole point:
+ * conflating the two is what let an update wipe a device's notes, because
+ * the next save wrote the empty read back over everything. */
+function parseStoredNotes(raw: string | null): ParsedNotes | null {
+  if (!raw) return null;
+  let parsed: unknown;
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeNote);
+    parsed = JSON.parse(raw);
   } catch {
-    // Corrupt or missing local data shouldn't crash the app — start fresh.
-    return [];
+    return null;
+  }
+  const list = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object" && Array.isArray((parsed as any).notes)
+      ? (parsed as any).notes
+      : null;
+  if (!list) return null;
+  return { notes: list.map(normalizeNote), repaired: needsRepair(list) };
+}
+
+async function readRaw(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
   }
 }
 
+/** Keeps the exact bytes of a payload we couldn't read, so a later attempt
+ * can still look inside it. Only ever touches the quarantine key. */
+async function quarantine(raw: string): Promise<void> {
+  try {
+    if ((await AsyncStorage.getItem(QUARANTINE_KEY)) === raw) return;
+    await AsyncStorage.setItem(QUARANTINE_KEY, raw);
+  } catch {
+    // The quarantine is a safety net, not a requirement.
+  }
+}
+
+/**
+ * Reads every note. A payload we can't parse is never allowed to *look*
+ * like an empty one: it's quarantined, and every note that can still be
+ * recovered — from the damaged text itself and from the last known-good
+ * snapshot — is merged back in, so notes saved by an earlier version come
+ * back on their own rather than being silently dropped.
+ */
+async function readAll(): Promise<SermonNote[]> {
+  const raw = await readRaw();
+  if (!raw) return []; // nothing has ever been saved on this device
+
+  const parsed = parseStoredNotes(raw);
+  if (parsed) {
+    if (parsed.repaired) {
+      // Persist the upgraded shape once, so notes carried over from an
+      // older format aren't re-invented (with fresh ids) on every read.
+      await writeAll(parsed.notes).catch(() => {});
+    }
+    return parsed.notes;
+  }
+
+  await quarantine(raw);
+  const backupRaw = await AsyncStorage.getItem(BACKUP_KEY).catch(() => null);
+  const recovered = mergeNotes(salvageNotes(raw), salvageNotes(backupRaw));
+  // Make the recovery durable, so the damaged payload isn't re-salvaged on
+  // every load. If nothing at all could be recovered we deliberately leave
+  // the live key alone rather than overwriting it with the empty result.
+  if (recovered.length > 0) await writeAll(recovered).catch(() => {});
+  return recovered;
+}
+
 async function writeAll(notes: SermonNote[]): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  const payload = JSON.stringify(notes);
+  await AsyncStorage.setItem(STORAGE_KEY, payload);
+  // Move the known-good marker forward only once the live write succeeded.
+  await AsyncStorage.setItem(BACKUP_KEY, payload).catch(() => {});
 }
 
 /**
