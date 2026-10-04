@@ -80,13 +80,16 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       opacity: 0.85,
     },
     meta: {
-      fontFamily: fontFamily.sansSemibold,
-      fontSize: 12,
-      color: colors.textMuted,
+      fontFamily: fontFamily.sansBold,
+      fontSize: 10.5,
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+      color: colors.textFaint,
     },
     title: {
       fontFamily: fontFamily.serifSemibold,
-      fontSize: 18,
+      fontSize: 19,
+      lineHeight: 25,
       color: colors.textPrimary,
     },
     preview: {
@@ -95,7 +98,15 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       lineHeight: 19,
       color: colors.textSecondary,
     },
-    pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
+    pillRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: spacing.sm,
+      paddingTop: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
+    },
     versePill: {
       flexDirection: "row",
       alignSelf: "flex-start",
@@ -104,7 +115,7 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       backgroundColor: colors.verseBg,
       paddingHorizontal: 11,
       paddingVertical: 6,
-      borderRadius: 999,
+      borderRadius: radius.pill,
     },
     versePillText: {
       fontFamily: fontFamily.sansBold,
@@ -121,7 +132,7 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       borderColor: colors.border,
       paddingHorizontal: 11,
       paddingVertical: 6,
-      borderRadius: 999,
+      borderRadius: radius.pill,
     },
     audioPillText: {
       fontFamily: fontFamily.sansBold,
@@ -132,13 +143,13 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       alignSelf: "flex-start",
       paddingHorizontal: 10,
       paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: colors.background,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceMuted,
     },
     tagPillText: {
       fontFamily: fontFamily.sansBold,
       fontSize: 11.5,
-      color: colors.textFaint,
+      color: colors.textMuted,
     },
   });
 }

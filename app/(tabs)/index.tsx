@@ -83,7 +83,9 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.brand}>
-            <OpenBookIcon size={20} color={colors.navy} />
+            <View style={styles.brandMark}>
+              <OpenBookIcon size={16} color={colors.navy} strokeWidth={2} />
+            </View>
             <Text style={styles.brandText}>Amani</Text>
           </View>
           <View style={styles.avatar}>
@@ -91,9 +93,10 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={{ marginTop: 18 }}>
+        <View style={styles.hero}>
           <Text style={styles.date}>{today}</Text>
-          <Text style={textStyles.displayTitle}>{greeting()}</Text>
+          <Text style={styles.heroTitle}>{greeting()}</Text>
+          <View style={styles.heroRule} />
         </View>
 
         <InstallBanner />
@@ -115,17 +118,26 @@ export default function HomeScreen() {
           style={{ marginTop: 20 }}
         />
 
-        <View style={{ marginTop: 28 }}>
-          <Text style={textStyles.label}>This week</Text>
+        <View style={{ marginTop: spacing.xxl - 4 }}>
+          <View style={styles.sectionHeader}>
+            <Text style={textStyles.label}>This week</Text>
+            <View style={styles.sectionRule} />
+          </View>
           {latest ? (
-            <View style={{ marginTop: 10 }}>
+            <View style={{ marginTop: spacing.md }}>
               <NoteCard note={latest} onPress={() => router.push(`/note/${latest.id}`)} />
             </View>
           ) : (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>
-                No notes yet — tap "New sermon note" during your next service to get started.
-              </Text>
+              <View style={styles.emptyIcon}>
+                <NotesIcon size={19} color={colors.navy} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.emptyTitle}>No notes yet</Text>
+                <Text style={styles.emptyText}>
+                  Tap &ldquo;New sermon note&rdquo; during your next service and it&apos;ll appear here.
+                </Text>
+              </View>
             </View>
           )}
         </View>
@@ -200,7 +212,15 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
     content: { padding: 24, paddingBottom: 40 },
     offscreen: { position: "absolute", top: 0, left: -9999, width: VERSE_CARD_WIDTH, height: VERSE_CARD_HEIGHT },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-    brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+    brand: { flexDirection: "row", alignItems: "center", gap: 10 },
+    brandMark: {
+      width: 32,
+      height: 32,
+      borderRadius: radius.sm,
+      backgroundColor: colors.verseBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     brandText: { fontFamily: fontFamily.serifBold, fontSize: 21, color: colors.navy },
     avatar: {
       width: 44,
@@ -210,16 +230,60 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       alignItems: "center",
       justifyContent: "center",
     },
-    date: { fontFamily: fontFamily.sansMedium, fontSize: 13, color: colors.textMuted, marginBottom: 2 },
+    hero: { marginTop: spacing.lg + 2 },
+    date: {
+      fontFamily: fontFamily.sansBold,
+      fontSize: 11,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      color: colors.textMuted,
+    },
+    heroTitle: {
+      fontFamily: fontFamily.serifSemibold,
+      fontSize: 29,
+      lineHeight: 36,
+      color: colors.textPrimary,
+      marginTop: 2,
+    },
+    // A short gold rule under the greeting — the one editorial flourish that
+    // gives the top of the screen a focal point.
+    heroRule: {
+      width: 34,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: colors.goldLight,
+      marginTop: spacing.md,
+    },
+    sectionHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+    sectionRule: { flex: 1, height: 1, backgroundColor: colors.borderLight },
     emptyCard: {
-      marginTop: spacing.sm + 2,
+      marginTop: spacing.md,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: spacing.md,
       backgroundColor: colors.card,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
       padding: 18,
+      ...shadows.sm,
     },
-    emptyText: { fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textSecondary, lineHeight: 20 },
+    emptyIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: radius.sm,
+      backgroundColor: colors.verseBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emptyTitle: { fontFamily: fontFamily.serifSemibold, fontSize: 15, color: colors.textPrimary },
+    emptyText: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 12.5,
+      color: colors.textSecondary,
+      lineHeight: 18,
+      marginTop: 2,
+    },
     tileRow: { flexDirection: "row", gap: 14, marginTop: 18 },
     tile: {
       flex: 1,

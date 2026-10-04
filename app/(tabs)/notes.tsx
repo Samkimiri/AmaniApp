@@ -5,9 +5,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
-import { SearchIcon } from "@/components/icons";
+import { NotesIcon, SearchIcon } from "@/components/icons";
 import { NoteCard } from "@/components/NoteCard";
 import { SwipeToDelete } from "@/components/SwipeToDelete";
+import { radius } from "@/theme/tokens";
 import { useNotes } from "@/hooks/useNotes";
 import { notesStore } from "@/data/notesStore";
 import { useAlert } from "@/context/AlertContext";
@@ -82,7 +83,11 @@ export default function NotesScreen() {
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
         <Text style={textStyles.screenTitle}>Your notes</Text>
-        {notes.length > 0 ? <Text style={styles.hint}>Swipe left or hold a note to delete it</Text> : null}
+        {notes.length > 0 ? (
+          <Text style={styles.hint}>
+            {notes.length} {notes.length === 1 ? "note" : "notes"} &middot; swipe left or hold to delete
+          </Text>
+        ) : null}
       </View>
 
       {notes.length > 0 ? (
@@ -140,10 +145,14 @@ export default function NotesScreen() {
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListEmptyComponent={
           <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <NotesIcon size={26} color={colors.navy} />
+            </View>
+            <Text style={styles.emptyTitle}>{isFiltering ? "No matches" : "Your notes live here"}</Text>
             <Text style={styles.emptyText}>
               {isFiltering
-                ? "No notes match that search."
-                : "Notes you take during a sermon will show up here, saved automatically on this device."}
+                ? "Try a different search, or clear the tag filter."
+                : "Notes you take during a sermon show up here, saved automatically on this device."}
             </Text>
           </View>
         }
@@ -186,7 +195,17 @@ function makeStyles(colors: ColorPalette) {
     tagChipText: { fontFamily: fontFamily.sansBold, fontSize: 12, color: colors.textSecondary },
     tagChipTextActive: { color: colors.white },
     list: { paddingHorizontal: 24, paddingBottom: 40, flexGrow: 1 },
-    empty: { paddingVertical: 40 },
-    emptyText: { fontSize: 13.5, color: colors.textSecondary, lineHeight: 20, textAlign: "center" },
+    empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 12, gap: 4 },
+    emptyIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: radius.pill,
+      backgroundColor: colors.verseBg,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 6,
+    },
+    emptyTitle: { fontFamily: fontFamily.serifSemibold, fontSize: 17, color: colors.textPrimary },
+    emptyText: { fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textSecondary, lineHeight: 20, textAlign: "center" },
   });
 }
