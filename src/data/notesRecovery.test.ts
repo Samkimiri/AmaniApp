@@ -1,4 +1,4 @@
-import { mergeNotes, needsRepair, normalizeNote, salvageNotes } from "./notesRecovery";
+import { mergeNotes, needsRepair, normalizeNote, notesInPayload, salvageNotes } from "./notesRecovery";
 import { newId, SermonNote } from "@/types/note";
 
 function makeNote(overrides: Partial<SermonNote> = {}): SermonNote {
@@ -101,5 +101,21 @@ describe("notesRecovery.needsRepair", () => {
     expect(needsRepair([{ title: "no id", blocks: [] }])).toBe(true);
     expect(needsRepair([{ id: "n", blocks: [{ type: "text", text: "no id" }] }])).toBe(true);
     expect(needsRepair([{ id: "n", title: "no blocks array" }])).toBe(true);
+  });
+});
+
+describe("notesRecovery.notesInPayload", () => {
+  it("accepts a well-formed array of notes, and an object wrapping one", () => {
+    const note = makeNote({ title: "Real" });
+    expect(notesInPayload([note]).map((n) => n.title)).toEqual(["Real"]);
+    expect(notesInPayload({ notes: [note] }).map((n) => n.title)).toEqual(["Real"]);
+  });
+
+  it("rejects a list that isn't notes (bookmarks, reading-plan progress, stats)", () => {
+    expect(notesInPayload([{ reference: "John 3:16", text: "…", savedAt: "2026-01-01" }])).toEqual([]);
+    expect(notesInPayload({ "plan-1": { completed: {} } })).toEqual([]);
+    expect(notesInPayload(["Genesis 1", "Romans 8"])).toEqual([]);
+    expect(notesInPayload(null)).toEqual([]);
+    expect(notesInPayload([])).toEqual([]);
   });
 });

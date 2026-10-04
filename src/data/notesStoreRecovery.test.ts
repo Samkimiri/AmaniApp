@@ -109,3 +109,63 @@ describe("notesStore recovery", () => {
     expect(await notesStore.getAll()).toEqual([]);
   });
 });
+
+describe("notesStore.recover (deep scan)", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("finds notes stored under a key it doesn't recognise", async () => {
+    // A past version may have written notes somewhere unexpected — finding
+    // them again is the whole point of the scan.
+    await AsyncStorage.setItem(
+      "amani.notes.legacyKey",
+      JSON.stringify([makeNote({ id: "stranded", title: "Stranded note" })])
+    );
+
+    const result = await notesStore.recover();
+
+    expect(result.recovered).toBe(1);
+    expect((await notesStore.getAll()).map((n) => n.title)).toEqual(["Stranded note"]);
+  });
+
+  it("adds recovered notes alongside the ones already showing", async () => {
+    await notesStore.save(makeNote({ id: "live", title: "Current" }));
+    await AsyncStorage.setItem(
+      "amani.notes.legacyKey",
+      JSON.stringify([makeNote({ id: "old", title: "Recovered" })])
+    );
+
+    await notesStore.recover();
+
+    expect((await notesStore.getAll()).map((n) => n.id).sort()).toEqual(["live", "old"]);
+  });
+
+  it("never mistakes other stored data for notes", async () => {
+    await AsyncStorage.setItem(
+      "amani.bookmarks.v1",
+      JSON.stringify([{ reference: "John 3:16", text: "For God so loved the world", savedAt: "2026-01-01" }])
+    );
+    await AsyncStorage.setItem("amani.readingPlans.v1", JSON.stringify({ "plan-1": { completed: {} } }));
+    await AsyncStorage.setItem("amani.chaptersRead.v1", JSON.stringify(["Genesis 1", "Genesis 2"]));
+
+    expect(await notesStore.recover()).toEqual({ recovered: 0, total: 0 });
+    expect(await notesStore.getAll()).toEqual([]);
+  });
+
+  it("brings back notes from the last known-good copy after the live payload is destroyed", async () => {
+    await notesStore.save(makeNote({ id: "a", title: "Was backed up" }));
+    await AsyncStorage.setItem(LIVE_KEY, "{ broken");
+
+    const result = await notesStore.recover();
+
+    expect(result.recovered).toBe(1);
+    expect((await notesStore.getAll()).map((n) => n.title)).toEqual(["Was backed up"]);
+  });
+
+  it("reports nothing to recover on a healthy store", async () => {
+    await notesStore.save(makeNote({ id: "a" }));
+
+    expect(await notesStore.recover()).toEqual({ recovered: 0, total: 1 });
+  });
+});

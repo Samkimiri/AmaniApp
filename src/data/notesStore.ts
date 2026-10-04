@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NoteBlock, SermonNote } from "@/types/note";
 import { deleteRecording } from "@/data/audioStorage";
 import { deleteImage } from "@/data/imageStorage";
-import { mergeNotes, needsRepair, normalizeNote, salvageNotes } from "@/data/notesRecovery";
+import { mergeNotes, needsRepair, normalizeNote, notesInPayload, salvageNotes } from "@/data/notesRecovery";
 
 const STORAGE_KEY = "amani.notes.v1";
 /** The last payload we could read back in full. If the live key is ever
@@ -12,6 +12,9 @@ const BACKUP_KEY = "amani.notes.backup.v1";
 /** An unreadable live payload, kept verbatim. Nothing is allowed to write
  * the live key from a bad read, so the raw bytes survive to be salvaged. */
 const QUARANTINE_KEY = "amani.notes.quarantine.v1";
+/** Every key the notes store itself owns — excluded from the "look
+ * everywhere else on this device" scan so it never re-reads its own copies. */
+const KNOWN_KEYS = [STORAGE_KEY, BACKUP_KEY, QUARANTINE_KEY];
 
 interface ParsedNotes {
   notes: SermonNote[];
@@ -100,6 +103,33 @@ async function writeAll(notes: SermonNote[]): Promise<void> {
 }
 
 /**
+ * Looks for notes under *every other* key this app has stored, in case a
+ * past version wrote them somewhere unexpected (a renamed key, a
+ * half-finished migration). Only a value that is unmistakably a list of
+ * notes is accepted — see `notesInPayload` — so unrelated data (bookmarks,
+ * reading-plan progress) is never swept up as someone's notes.
+ */
+async function scanEveryStoredKey(): Promise<SermonNote[]> {
+  try {
+    const keys = (await AsyncStorage.getAllKeys()).filter((key) => !KNOWN_KEYS.includes(key));
+    if (keys.length === 0) return [];
+    const pairs = await AsyncStorage.multiGet(keys);
+    const found: SermonNote[] = [];
+    for (const [, value] of pairs) {
+      if (!value) continue;
+      try {
+        found.push(...notesInPayload(JSON.parse(value)));
+      } catch {
+        // Not JSON, so not a notes payload.
+      }
+    }
+    return found;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Every write is a read-modify-write of the whole array, and several
  * callers can fire at once — the editor's debounced autosave, its `goBack`,
  * and a delete from the notes list. Without serializing them, two
@@ -161,6 +191,41 @@ export const notesStore = {
       const target = notes.find((n) => n.id === id);
       if (target) await deleteNoteMedia(target);
       await writeAll(notes.filter((n) => n.id !== id));
+    });
+  },
+
+  /**
+   * Last-resort recovery: merges every note that can still be found
+   * anywhere on this device — the live store, a quarantined payload, the
+   * last known-good copy, and any other key a past version may have used —
+   * back into the list, without disturbing the notes that are already
+   * there. Returns how many notes it brought back that weren't loading.
+   */
+  recover(): Promise<{ recovered: number; total: number }> {
+    return mutate(async () => {
+      // Snapshot the stored copies *before* any recovery runs, so the count
+      // reflects the notes this scan actually brought back rather than
+      // whatever the automatic recovery already did on the way in.
+      const [raw, backupRaw, quarantineRaw] = await Promise.all([
+        readRaw(),
+        AsyncStorage.getItem(BACKUP_KEY).catch(() => null),
+        AsyncStorage.getItem(QUARANTINE_KEY).catch(() => null),
+      ]);
+      const wouldHaveLoaded = parseStoredNotes(raw)?.notes ?? [];
+
+      const live = await readAll();
+      const found = mergeNotes(
+        live,
+        salvageNotes(raw),
+        salvageNotes(backupRaw),
+        salvageNotes(quarantineRaw),
+        await scanEveryStoredKey()
+      );
+
+      const alreadyLoadable = new Set(wouldHaveLoaded.map((n) => n.id));
+      const recovered = found.filter((n) => !alreadyLoadable.has(n.id)).length;
+      if (recovered > 0) await writeAll(found);
+      return { recovered, total: found.length };
     });
   },
 };

@@ -8,6 +8,7 @@ import { fontFamily } from "@/theme/typography";
 import { ChartIcon, ChevronRightIcon, DocumentIcon, MoonIcon, OpenBookIcon, UserIcon } from "@/components/icons";
 import { AppLockSection } from "@/components/AppLockSection";
 import { BackupSection } from "@/components/BackupSection";
+import { RecoverySection } from "@/components/RecoverySection";
 import { GoogleDriveSection } from "@/components/GoogleDriveSection";
 import {
   AVAILABLE_TRANSLATIONS,
@@ -119,6 +120,7 @@ export default function SettingsScreen() {
 
         <AppLockSection />
         <BackupSection />
+        <RecoverySection />
         <GoogleDriveSection />
 
         <Pressable style={styles.linkRow} onPress={() => router.push("/legal")}>

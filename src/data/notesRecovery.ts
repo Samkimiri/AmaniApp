@@ -211,6 +211,29 @@ export function salvageNotes(raw: string | null | undefined): SermonNote[] {
 }
 
 /**
+ * A strict test for "this whole stored value is a note payload", used when
+ * scanning storage keys we don't recognise. Unlike `looksLikeNote`, it
+ * requires *every* entry to be a real note (with a `blocks` array), so an
+ * unrelated list — bookmarks, reading-plan progress, read-chapter stats —
+ * can never be mistaken for someone's notes.
+ */
+function isStrictNote(value: unknown): boolean {
+  if (!isObject(value) || !Array.isArray(value.blocks)) return false;
+  return typeof value.id === "string" || typeof value.title === "string" || typeof value.date === "string";
+}
+
+export function notesInPayload(value: unknown): SermonNote[] {
+  const list = Array.isArray(value)
+    ? value
+    : isObject(value) && Array.isArray(value.notes)
+      ? value.notes
+      : null;
+  if (!list || list.length === 0) return [];
+  if (!list.every(isStrictNote)) return [];
+  return list.map(normalizeNote);
+}
+
+/**
  * Combines note lists (live storage, a damaged payload, the last known-good
  * snapshot) into one, keyed by note id. When the same note turns up more
  * than once the most recently updated copy wins, so an older recovery copy
