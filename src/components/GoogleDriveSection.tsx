@@ -3,8 +3,9 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { ColorPalette } from "@/theme/colors";
-import { useColors } from "@/context/ThemeContext";
+import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius, Shadows, spacing } from "@/theme/tokens";
 import { CloudIcon } from "./icons";
 import { buildBackupJson, importBackup } from "@/data/backup";
 import { downloadBackupFromDrive, uploadBackupToDrive } from "@/data/googleDrive";
@@ -46,7 +47,8 @@ const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
  */
 export function GoogleDriveSection() {
   const colors = useColors();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const shadows = useShadows();
+  const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
   const showAlert = useAlert();
   const showToast = useToast();
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -182,16 +184,17 @@ export function GoogleDriveSection() {
   );
 }
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     card: {
       width: "100%",
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
-      padding: 16,
-      marginTop: 16,
+      borderRadius: radius.md,
+      padding: spacing.lg,
+      marginTop: spacing.lg,
+      ...shadows.sm,
     },
     headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     iconWrap: {

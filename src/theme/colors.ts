@@ -50,6 +50,10 @@ export interface ColorPalette {
 
   white: string;
   scrim: string;
+  /** Tint for elevation shadows (see src/theme/tokens.ts). Tinted with the
+   * palette's own warm tone rather than neutral grey, so a card's shadow
+   * reads as part of the same scheme instead of sitting on top of it. */
+  shadowTint: string;
 }
 
 export const lightColors: ColorPalette = {
@@ -87,6 +91,7 @@ export const lightColors: ColorPalette = {
 
   white: "#FFFFFF",
   scrim: "rgba(17,24,39,0.42)",
+  shadowTint: "#1F3A5F",
 };
 
 export const darkColors: ColorPalette = {
@@ -122,6 +127,7 @@ export const darkColors: ColorPalette = {
 
   white: "#FFFFFF",
   scrim: "rgba(0,0,0,0.6)",
+  shadowTint: "#000000",
 };
 
 /** A warm, sepia-toned palette modeled on a printed page — for
@@ -166,6 +172,7 @@ export const readingColors: ColorPalette = {
 
   white: "#FFFFFF",
   scrim: "rgba(59,47,30,0.42)",
+  shadowTint: "#3B2F1E",
 };
 
 /** Static light-mode default — kept for any spot that genuinely can't

@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
-import { useColors } from "@/context/ThemeContext";
+import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius, Shadows, spacing } from "@/theme/tokens";
 import { LockIcon } from "./icons";
 import { PinPad } from "./PinPad";
 import { useAppLockContext } from "@/context/AppLockContext";
@@ -22,7 +23,8 @@ export function AppLockSection() {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const colors = useColors();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const shadows = useShadows();
+  const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
 
   function closeModal() {
     setStep(null);
@@ -176,16 +178,17 @@ export function AppLockSection() {
   );
 }
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     card: {
       width: "100%",
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
-      padding: 16,
-      marginTop: 16,
+      borderRadius: radius.md,
+      padding: spacing.lg,
+      marginTop: spacing.lg,
+      ...shadows.sm,
     },
     headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     iconWrap: {

@@ -2,8 +2,9 @@ import React, { useMemo } from "react";
 import { Tabs } from "expo-router";
 import { View, Text, StyleSheet } from "react-native";
 import { ColorPalette } from "@/theme/colors";
-import { useColors } from "@/context/ThemeContext";
+import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { Shadows } from "@/theme/tokens";
 import { HomeIcon, NotesIcon, OpenBookIcon, SettingsIcon } from "@/components/icons";
 
 function TabIcon({
@@ -33,7 +34,8 @@ function TabIcon({
 
 export default function TabsLayout() {
   const colors = useColors();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const shadows = useShadows();
+  const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
 
   return (
     <Tabs
@@ -108,14 +110,15 @@ export default function TabsLayout() {
   );
 }
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     tabBar: {
       backgroundColor: colors.card,
-      borderTopColor: colors.border,
+      borderTopColor: colors.borderLight,
       borderTopWidth: 1,
       height: 84,
       paddingTop: 6,
+      ...shadows.top,
     },
     tabItem: {
       alignItems: "center",

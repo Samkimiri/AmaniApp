@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
-import { useColors } from "@/context/ThemeContext";
+import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius, Shadows, spacing } from "@/theme/tokens";
 import { SearchIcon } from "./icons";
 import { notesStore } from "@/data/notesStore";
 import { useAlert } from "@/context/AlertContext";
@@ -19,7 +20,8 @@ export function RecoverySection() {
   const showAlert = useAlert();
   const showToast = useToast();
   const colors = useColors();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const shadows = useShadows();
+  const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
 
   async function handleRecover() {
     try {
@@ -67,16 +69,17 @@ export function RecoverySection() {
   );
 }
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     card: {
       width: "100%",
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
-      padding: 16,
-      marginTop: 16,
+      borderRadius: radius.md,
+      padding: spacing.lg,
+      marginTop: spacing.lg,
+      ...shadows.sm,
     },
     headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     iconWrap: {

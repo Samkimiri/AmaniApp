@@ -3,6 +3,7 @@ import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ColorPalette, darkColors, lightColors, readingColors } from "@/theme/colors";
 import { makeTextStyles } from "@/theme/typography";
+import { makeShadows, Shadows } from "@/theme/tokens";
 
 export type ThemeMode = "light" | "dark" | "reading" | "system";
 
@@ -66,4 +67,11 @@ export function useColors(): ColorPalette {
 export function useTextStyles() {
   const colors = useColors();
   return useMemo(() => makeTextStyles(colors), [colors]);
+}
+
+/** Elevation tokens (`sm`/`md`/`lg`) recomputed for the active palette's
+ * shadow tint — spread one into a `style` to lift a surface off the page. */
+export function useShadows(): Shadows {
+  const colors = useColors();
+  return useMemo(() => makeShadows(colors), [colors]);
 }

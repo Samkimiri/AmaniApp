@@ -1,8 +1,9 @@
 import React, { useMemo } from "react";
-import { Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { ColorPalette } from "@/theme/colors";
-import { useColors } from "@/context/ThemeContext";
+import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius, Shadows } from "@/theme/tokens";
 
 export function PrimaryButton({
   label,
@@ -16,7 +17,8 @@ export function PrimaryButton({
   style?: ViewStyle;
 }) {
   const colors = useColors();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const shadows = useShadows();
+  const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
   return (
     <Pressable
       onPress={onPress}
@@ -30,27 +32,18 @@ export function PrimaryButton({
   );
 }
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
   button: {
     width: "100%",
     height: 64,
-    borderRadius: 16,
+    borderRadius: radius.xl,
     backgroundColor: colors.navy,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     paddingHorizontal: 20,
-    ...Platform.select({
-      web: { boxShadow: "0px 8px 16px rgba(31, 58, 95, 0.28)" },
-      default: {
-        shadowColor: colors.navy,
-        shadowOpacity: 0.28,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 4,
-      },
-    }),
+    ...shadows.lg,
   },
   pressed: {
     opacity: 0.9,

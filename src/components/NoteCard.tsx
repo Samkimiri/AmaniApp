@@ -1,8 +1,9 @@
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
-import { useColors } from "@/context/ThemeContext";
+import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius, Shadows, spacing } from "@/theme/tokens";
 import { OpenBookIcon, WaveformIcon } from "./icons";
 import { firstAudioBlock, firstVerseBlock, formatDuration, SermonNote } from "@/types/note";
 
@@ -16,7 +17,8 @@ export const NoteCard = React.memo(function NoteCard({
   onLongPress?: () => void;
 }) {
   const colors = useColors();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const shadows = useShadows();
+  const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
   const verse = firstVerseBlock(note);
   const audio = firstAudioBlock(note);
   const previewBlock = (note.blocks ?? []).find(
@@ -63,15 +65,16 @@ export const NoteCard = React.memo(function NoteCard({
   );
 });
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     card: {
       backgroundColor: colors.card,
-      borderRadius: 16,
+      borderRadius: radius.lg,
       padding: 18,
       borderWidth: 1,
       borderColor: colors.border,
-      gap: 8,
+      gap: spacing.sm,
+      ...shadows.sm,
     },
     pressed: {
       opacity: 0.85,

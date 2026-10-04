@@ -4,8 +4,9 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
 import { ColorPalette } from "@/theme/colors";
-import { useColors, useTextStyles } from "@/context/ThemeContext";
+import { useColors, useShadows, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius, Shadows, spacing } from "@/theme/tokens";
 import { OpenBookIcon, PlusIcon, NotesIcon, UserIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { NoteCard } from "@/components/NoteCard";
@@ -48,7 +49,8 @@ export default function HomeScreen() {
   });
   const colors = useColors();
   const textStyles = useTextStyles();
-  const styles = React.useMemo(() => makeStyles(colors), [colors]);
+  const shadows = useShadows();
+  const styles = React.useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
 
   const shotRef = useRef<ViewShot>(null);
   const [sharingVerse, setSharingVerse] = useState(false);
@@ -192,7 +194,7 @@ export default function HomeScreen() {
   );
 }
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
     content: { padding: 24, paddingBottom: 40 },
@@ -210,9 +212,9 @@ function makeStyles(colors: ColorPalette) {
     },
     date: { fontFamily: fontFamily.sansMedium, fontSize: 13, color: colors.textMuted, marginBottom: 2 },
     emptyCard: {
-      marginTop: 10,
+      marginTop: spacing.sm + 2,
       backgroundColor: colors.card,
-      borderRadius: 16,
+      borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
       padding: 18,
@@ -224,14 +226,10 @@ function makeStyles(colors: ColorPalette) {
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 16,
+      borderRadius: radius.lg,
       padding: 16,
       gap: 10,
-      shadowColor: "#000",
-      shadowOpacity: 0.05,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 1,
+      ...shadows.sm,
     },
     tilePressed: { opacity: 0.7 },
     tileIcon: {

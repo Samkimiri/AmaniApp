@@ -3,8 +3,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ColorPalette } from "@/theme/colors";
-import { useColors, useTextStyles, useTheme, type ThemeMode } from "@/context/ThemeContext";
+import { useColors, useShadows, useTextStyles, useTheme, type ThemeMode } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius, Shadows, spacing } from "@/theme/tokens";
 import { ChartIcon, ChevronRightIcon, DocumentIcon, MoonIcon, OpenBookIcon, UserIcon } from "@/components/icons";
 import { AppLockSection } from "@/components/AppLockSection";
 import { BackupSection } from "@/components/BackupSection";
@@ -31,7 +32,8 @@ export default function SettingsScreen() {
   const colors = useColors();
   const textStyles = useTextStyles();
   const { mode, setMode } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const shadows = useShadows();
+  const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
 
   async function chooseTranslation(code: TranslationCode) {
     if (code === translationCode) return;
@@ -141,7 +143,7 @@ export default function SettingsScreen() {
   );
 }
 
-function makeStyles(colors: ColorPalette) {
+function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
     header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
@@ -170,9 +172,10 @@ function makeStyles(colors: ColorPalette) {
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
-      padding: 16,
+      borderRadius: radius.md,
+      padding: spacing.lg,
       marginTop: 26,
+      ...shadows.sm,
     },
     row: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
     rowTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
@@ -195,13 +198,14 @@ function makeStyles(colors: ColorPalette) {
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
-      marginTop: 16,
+      marginTop: spacing.lg,
       paddingVertical: 14,
-      paddingHorizontal: 16,
+      paddingHorizontal: spacing.lg,
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
+      borderRadius: radius.md,
+      ...shadows.sm,
     },
     linkRowText: { flex: 1, fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
     footnote: {
