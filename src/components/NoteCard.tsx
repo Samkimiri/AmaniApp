@@ -1,10 +1,11 @@
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius, Shadows, spacing } from "@/theme/tokens";
 import { OpenBookIcon, WaveformIcon } from "./icons";
+import { PressableScale } from "./Motion";
 import { firstAudioBlock, firstVerseBlock, formatDuration, SermonNote } from "@/types/note";
 
 export const NoteCard = React.memo(function NoteCard({
@@ -27,11 +28,12 @@ export const NoteCard = React.memo(function NoteCard({
   const preview = previewBlock?.text;
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={400}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={styles.card}
+      accessibilityRole="button"
     >
       <Text style={styles.meta}>
         {[note.church, note.preacher].filter(Boolean).join(" · ") || "Personal note"}
@@ -61,7 +63,7 @@ export const NoteCard = React.memo(function NoteCard({
           ))}
         </View>
       ) : null}
-    </Pressable>
+    </PressableScale>
   );
 });
 
@@ -75,9 +77,6 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       borderColor: colors.border,
       gap: spacing.sm,
       ...shadows.sm,
-    },
-    pressed: {
-      opacity: 0.85,
     },
     meta: {
       fontFamily: fontFamily.sansBold,

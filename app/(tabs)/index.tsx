@@ -21,6 +21,7 @@ import { useAlert } from "@/context/AlertContext";
 import { NOTE_TEMPLATES } from "@/data/noteTemplates";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { OnboardingModal } from "@/components/OnboardingModal";
+import { FadeInView, PressableScale } from "@/components/Motion";
 import { ContinueReadingCard } from "@/components/BibleBrowser";
 
 function greeting(): string {
@@ -124,9 +125,9 @@ export default function HomeScreen() {
             <View style={styles.sectionRule} />
           </View>
           {latest ? (
-            <View style={{ marginTop: spacing.md }}>
+            <FadeInView style={{ marginTop: spacing.md }}>
               <NoteCard note={latest} onPress={() => router.push(`/note/${latest.id}`)} />
-            </View>
+            </FadeInView>
           ) : (
             <View style={styles.emptyCard}>
               <View style={styles.emptyIcon}>
@@ -143,26 +144,28 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.tileRow}>
-          <Pressable
-            style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+          <PressableScale
+            style={styles.tile}
             onPress={() => router.push("/bible")}
+            accessibilityRole="button"
           >
             <View style={styles.tileIcon}>
               <OpenBookIcon size={20} color={colors.navy} />
             </View>
             <Text style={styles.tileTitle}>Bible</Text>
             <Text style={styles.tileSubtitle}>All 66 books, offline</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+          </PressableScale>
+          <PressableScale
+            style={styles.tile}
             onPress={() => router.push("/notes")}
+            accessibilityRole="button"
           >
             <View style={styles.tileIcon}>
               <NotesIcon size={20} color={colors.navy} />
             </View>
             <Text style={styles.tileTitle}>All notes</Text>
             <Text style={styles.tileSubtitle}>{notes.length} saved</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </ScrollView>
 
@@ -295,7 +298,6 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       gap: 10,
       ...shadows.sm,
     },
-    tilePressed: { opacity: 0.7 },
     tileIcon: {
       width: 40,
       height: 40,

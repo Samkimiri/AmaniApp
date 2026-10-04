@@ -8,6 +8,7 @@ import { fontFamily } from "@/theme/typography";
 import { NotesIcon, SearchIcon } from "@/components/icons";
 import { NoteCard } from "@/components/NoteCard";
 import { SwipeToDelete } from "@/components/SwipeToDelete";
+import { FadeInView } from "@/components/Motion";
 import { radius } from "@/theme/tokens";
 import { useNotes } from "@/hooks/useNotes";
 import { notesStore } from "@/data/notesStore";
@@ -128,19 +129,21 @@ export default function NotesScreen() {
         data={filtered}
         keyExtractor={(n) => n.id}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <SwipeToDelete
-            onDelete={async () => {
-              await notesStore.remove(item.id);
-              reload();
-            }}
-          >
-            <NoteCard
-              note={item}
-              onPress={() => router.push(`/note/${item.id}`)}
-              onLongPress={() => confirmDelete(item.id, item.title)}
-            />
-          </SwipeToDelete>
+        renderItem={({ item, index }) => (
+          <FadeInView delay={Math.min(index, 8) * 35}>
+            <SwipeToDelete
+              onDelete={async () => {
+                await notesStore.remove(item.id);
+                reload();
+              }}
+            >
+              <NoteCard
+                note={item}
+                onPress={() => router.push(`/note/${item.id}`)}
+                onLongPress={() => confirmDelete(item.id, item.title)}
+              />
+            </SwipeToDelete>
+          </FadeInView>
         )}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListEmptyComponent={

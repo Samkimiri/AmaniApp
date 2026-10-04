@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius, Shadows } from "@/theme/tokens";
+import { PressableScale } from "./Motion";
 
 export function PrimaryButton({
   label,
@@ -20,15 +21,16 @@ export function PrimaryButton({
   const shadows = useShadows();
   const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.button, style, pressed && styles.pressed]}
+      style={[styles.button, style]}
+      scaleTo={0.98}
     >
       {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
       <Text style={styles.label}>{label}</Text>
       <View style={{ flex: 1 }} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -44,9 +46,6 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
     gap: 14,
     paddingHorizontal: 20,
     ...shadows.lg,
-  },
-  pressed: {
-    opacity: 0.9,
   },
   iconWrap: {
     width: 36,

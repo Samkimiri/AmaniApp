@@ -57,6 +57,7 @@ import { extractNoteReferences, ScriptureRef } from "@/lib/scriptureRefs";
 import { useAlert } from "@/context/AlertContext";
 import { useHint } from "@/hooks/useHint";
 import { HintBanner } from "@/components/HintBanner";
+import { PulseDot } from "@/components/Motion";
 import { isBlankNote } from "@/lib/noteDraft";
 
 // How many undo steps to keep — generous for a single editing session
@@ -946,7 +947,10 @@ export default function NoteEditorScreen() {
             </Pressable>
             {sidebarCollapsed ? (
               <View style={styles.sidebarCollapsedDot}>
-                <View style={[styles.savedDot, saveState === "saving" && { backgroundColor: colors.textFaint }]} />
+                <PulseDot
+                  active={saveState === "saving"}
+                  color={saveState === "saving" ? colors.textFaint : colors.success}
+                />
               </View>
             ) : (
               <>
@@ -1068,7 +1072,10 @@ export default function NoteEditorScreen() {
               </View>
             ) : null}
             <View style={styles.sidebarSavedRow}>
-              <View style={[styles.savedDot, saveState === "saving" && { backgroundColor: colors.textFaint }]} />
+              <PulseDot
+                active={saveState === "saving"}
+                color={saveState === "saving" ? colors.textFaint : colors.success}
+              />
               <Text style={styles.sidebarSavedText}>{saveState === "saving" ? "Saving…" : "Saved"}</Text>
             </View>
             </>
@@ -1815,6 +1822,5 @@ function makeStyles(colors: ColorPalette) {
   toolbarButtonActive: { backgroundColor: colors.verseBg },
   toolbarButtonRecording: { backgroundColor: "#FF6B5E" },
   toolbarButtonDisabled: { opacity: 0.4 },
-  savedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
   });
 }
