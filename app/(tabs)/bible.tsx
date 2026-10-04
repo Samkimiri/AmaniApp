@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius } from "@/theme/tokens";
 import { SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, OpenBookIcon, PlusIcon } from "@/components/icons";
 import {
   ensureCrossReferencesLoaded,
@@ -328,7 +329,7 @@ function makeStyles(colors: ColorPalette) {
     backgroundColor: colors.navy,
     paddingHorizontal: 14,
     height: 40,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     justifyContent: "center",
   },
   actionButtonPressed: { opacity: 0.6 },
@@ -336,7 +337,7 @@ function makeStyles(colors: ColorPalette) {
   searchBar: {
     marginHorizontal: 24,
     height: 46,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -355,7 +356,7 @@ function makeStyles(colors: ColorPalette) {
     color: colors.gold,
     marginBottom: 8,
   },
-  verseTextWrap: { borderRadius: 12 },
+  verseTextWrap: { borderRadius: radius.md },
   verseTextWrapHighlighted: {
     backgroundColor: colors.verseBg,
     paddingHorizontal: 12,
@@ -367,7 +368,7 @@ function makeStyles(colors: ColorPalette) {
   actionButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius.pill,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -382,7 +383,7 @@ function makeStyles(colors: ColorPalette) {
     justifyContent: "center",
     gap: 8,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radius.pill,
     backgroundColor: colors.navy,
     paddingHorizontal: 14,
   },
@@ -392,7 +393,7 @@ function makeStyles(colors: ColorPalette) {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     height: 36,
     paddingHorizontal: 12,
     alignItems: "center",

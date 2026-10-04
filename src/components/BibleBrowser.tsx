@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { ColorPalette, lightColors } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius } from "@/theme/tokens";
 import { BOOKS } from "@/data/bible";
 import { useReadingPosition } from "@/data/readingProgress";
 import { ChevronRightIcon, OpenBookIcon } from "./icons";
@@ -86,7 +87,7 @@ function makeStyles(colors: ColorPalette) {
       alignItems: "center",
       gap: 14,
       backgroundColor: lightColors.navy, // fixed brand navy in every theme, like the verse-of-the-day card
-      borderRadius: 18,
+      borderRadius: radius.lg,
       padding: 18,
       shadowColor: lightColors.navyDark,
       shadowOpacity: 0.25,
@@ -97,7 +98,7 @@ function makeStyles(colors: ColorPalette) {
     continueIcon: {
       width: 46,
       height: 46,
-      borderRadius: 23,
+      borderRadius: radius.pill,
       backgroundColor: "rgba(255,255,255,0.14)",
       alignItems: "center",
       justifyContent: "center",
@@ -122,7 +123,7 @@ function makeStyles(colors: ColorPalette) {
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 12,
+      borderRadius: radius.sm,
       paddingVertical: 10,
       paddingHorizontal: 13,
     },

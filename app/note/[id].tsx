@@ -20,6 +20,7 @@ import { Audio, type AVPlaybackStatus } from "expo-av";
 import { ColorPalette } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
+import { radius } from "@/theme/tokens";
 import {
   CameraIcon,
   ChecklistIcon,
@@ -1778,7 +1779,7 @@ function makeStyles(colors: ColorPalette) {
     alignSelf: "center",
     width: 26,
     height: 26,
-    borderRadius: 13,
+    borderRadius: radius.pill,
     backgroundColor: colors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
@@ -1808,8 +1809,10 @@ function makeStyles(colors: ColorPalette) {
   toolbarButton: {
     width: 58,
     height: 50,
-    borderRadius: 14,
+    borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
