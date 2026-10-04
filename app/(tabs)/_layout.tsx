@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
-import { Shadows } from "@/theme/tokens";
+import { radius, Shadows } from "@/theme/tokens";
 import { HomeIcon, NotesIcon, OpenBookIcon, SettingsIcon } from "@/components/icons";
 
 function TabIcon({
@@ -23,11 +23,10 @@ function TabIcon({
   const color = focused ? colors.navy : colors.textFaint;
   return (
     <View style={styles.tabItem}>
-      {render(color)}
+      <View style={[styles.iconPill, focused && styles.iconPillActive]}>{render(color)}</View>
       <Text style={[styles.tabLabel, { color, fontFamily: focused ? fontFamily.sansBold : fontFamily.sansSemibold }]}>
         {label}
       </Text>
-      {focused ? <View style={styles.dot} /> : null}
     </View>
   );
 }
@@ -123,19 +122,21 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
     tabItem: {
       alignItems: "center",
       justifyContent: "center",
-      gap: 4,
-      minHeight: 44,
+      gap: 3,
+      minHeight: 48,
     },
+    // The focused tab gets a soft pill behind its icon — a clearer "you are
+    // here" than a small dot, without turning the bar into a row of buttons.
+    iconPill: {
+      width: 54,
+      height: 30,
+      borderRadius: radius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconPillActive: { backgroundColor: colors.verseBg },
     tabLabel: {
       fontSize: 10.5,
-    },
-    dot: {
-      position: "absolute",
-      bottom: -8,
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.gold,
     },
   });
 }

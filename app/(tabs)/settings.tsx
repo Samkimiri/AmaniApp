@@ -114,10 +114,14 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <Pressable style={styles.linkRow} onPress={() => router.push("/stats")}>
-          <ChartIcon size={16} color={colors.textSecondary} />
+        <Pressable
+          style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+          onPress={() => router.push("/stats")}
+          accessibilityRole="button"
+        >
+          <ChartIcon size={16} color={colors.navy} />
           <Text style={styles.linkRowText}>Your reading, so far</Text>
-          <ChevronRightIcon size={16} />
+          <ChevronRightIcon size={16} color={colors.textFaint} />
         </Pressable>
 
         <AppLockSection />
@@ -125,10 +129,14 @@ export default function SettingsScreen() {
         <RecoverySection />
         <GoogleDriveSection />
 
-        <Pressable style={styles.linkRow} onPress={() => router.push("/legal")}>
-          <DocumentIcon size={16} color={colors.textSecondary} />
+        <Pressable
+          style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+          onPress={() => router.push("/legal")}
+          accessibilityRole="button"
+        >
+          <DocumentIcon size={16} color={colors.navy} />
           <Text style={styles.linkRowText}>Privacy &amp; terms</Text>
-          <ChevronRightIcon size={16} />
+          <ChevronRightIcon size={16} color={colors.textFaint} />
         </Pressable>
 
         <Text style={styles.footnote}>
@@ -184,7 +192,7 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
     translationChip: {
       height: 34,
       paddingHorizontal: 16,
-      borderRadius: 999,
+      borderRadius: radius.pill,
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: "center",
@@ -207,6 +215,7 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       borderRadius: radius.md,
       ...shadows.sm,
     },
+    linkRowPressed: { opacity: 0.85 },
     linkRowText: { flex: 1, fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
     footnote: {
       fontFamily: fontFamily.sansRegular,
