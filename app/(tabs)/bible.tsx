@@ -6,7 +6,7 @@ import { ColorPalette } from "@/theme/colors";
 import { useColors, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius } from "@/theme/tokens";
-import { SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, OpenBookIcon, PlusIcon } from "@/components/icons";
+import { CloseIcon, SearchIcon, BookmarkIcon, ChevronDownIcon, HighlightIcon, OpenBookIcon, PlusIcon } from "@/components/icons";
 import {
   ensureCrossReferencesLoaded,
   getCrossReferences,
@@ -151,162 +151,175 @@ export default function BibleScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={textStyles.screenTitle}>Bible</Text>
-        <Pressable
-          style={styles.translationBadge}
-          onPress={() => setTranslationPickerOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Choose Bible translation, currently ${TRANSLATION.code}`}
-        >
-          <Text style={styles.translationText}>{TRANSLATION.code}</Text>
-          <ChevronDownIcon size={12} strokeWidth={3} />
-        </Pressable>
-      </View>
-
-      <TranslationPicker visible={translationPickerOpen} onClose={() => setTranslationPickerOpen(false)} />
-
-      <View style={styles.searchBar}>
-        <SearchIcon size={16} color={colors.textMuted} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder='Search or type a reference — "Jn 3:16"'
-          placeholderTextColor={colors.textMuted}
-          style={styles.searchInput}
-          autoCorrect={false}
-        />
-      </View>
-
-      {results.length > 0 ? (
-        <FlatList
-          data={results}
-          keyExtractor={(r) => r.reference}
-          style={{ marginTop: 10, maxHeight: 260 }}
-          contentContainerStyle={{ paddingHorizontal: 24 }}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => (
-            <Pressable style={styles.resultRow} onPress={() => choose(item)}>
-              <Text style={styles.resultRef}>{item.reference}</Text>
-              <Text style={styles.resultText} numberOfLines={1}>
-                {item.text}
-              </Text>
-            </Pressable>
-          )}
-        />
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <ContinueReadingCard />
-          <PlansCard />
-          <MemorizeCard />
-          <BibleBrowser />
-
-          <Text style={[textStyles.label, { marginTop: 32, marginBottom: 14 }]}>Verse lookup</Text>
-          <Text style={styles.reference}>{selected.reference}</Text>
-          <View
-            style={[
-              styles.verseTextWrap,
-              isHighlighted && [
-                styles.verseTextWrapHighlighted,
-                { backgroundColor: getHighlightColor(highlightColor).background },
-              ],
-            ]}
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={textStyles.screenTitle}>Bible</Text>
+          <Pressable
+            style={styles.translationBadge}
+            onPress={() => setTranslationPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Choose Bible translation, currently ${TRANSLATION.code}`}
           >
-            <Text style={textStyles.verseTextLarge}>&ldquo;{selected.text}&rdquo;</Text>
-          </View>
+            <Text style={styles.translationText}>{TRANSLATION.code}</Text>
+            <ChevronDownIcon size={12} strokeWidth={3} />
+          </Pressable>
+        </View>
 
-          {isHighlighted ? (
-            <View style={styles.colorPickerRow}>
-              <ColorSwatchRow selected={highlightColor ?? "gold"} onSelect={chooseHighlightColor} />
-            </View>
-          ) : null}
+        <TranslationPicker visible={translationPickerOpen} onClose={() => setTranslationPickerOpen(false)} />
 
-          <View style={styles.actionsRow}>
+        <View style={styles.searchBar}>
+          <SearchIcon size={16} color={colors.textMuted} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder='Search or type a reference — "Jn 3:16"'
+            placeholderTextColor={colors.textMuted}
+            style={styles.searchInput}
+            autoCorrect={false}
+          />
+          {query.length > 0 ? (
             <Pressable
-              style={({ pressed }) => [
-                styles.actionButton,
-                isBookmarked && styles.actionButtonActive,
-                pressed && styles.actionButtonPressed,
+              onPress={() => setQuery("")}
+              hitSlop={8}
+              style={styles.clearButton}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <CloseIcon size={14} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        {results.length > 0 ? (
+          <FlatList
+            data={results}
+            keyExtractor={(r) => r.reference}
+            style={{ marginTop: 10, maxHeight: 260 }}
+            contentContainerStyle={{ paddingHorizontal: 24 }}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => (
+              <Pressable style={styles.resultRow} onPress={() => choose(item)}>
+                <Text style={styles.resultRef}>{item.reference}</Text>
+                <Text style={styles.resultText} numberOfLines={1}>
+                  {item.text}
+                </Text>
+              </Pressable>
+            )}
+          />
+        ) : (
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <ContinueReadingCard />
+            <PlansCard />
+            <MemorizeCard />
+            <BibleBrowser />
+
+            <Text style={[textStyles.label, { marginTop: 32, marginBottom: 14 }]}>Verse lookup</Text>
+            <Text style={styles.reference}>{selected.reference}</Text>
+            <View
+              style={[
+                styles.verseTextWrap,
+                isHighlighted && [
+                  styles.verseTextWrapHighlighted,
+                  { backgroundColor: getHighlightColor(highlightColor).background },
+                ],
               ]}
-              onPress={toggleBookmark}
-              accessibilityRole="button"
-              accessibilityLabel={isBookmarked ? "Remove bookmark" : "Bookmark this verse"}
             >
-              <BookmarkIcon size={17} color={isBookmarked ? colors.gold : colors.textSecondary} />
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.actionButton,
-                isHighlighted && styles.actionButtonActive,
-                pressed && styles.actionButtonPressed,
-              ]}
-              onPress={toggleHighlight}
-              accessibilityRole="button"
-              accessibilityLabel={isHighlighted ? "Remove highlight" : "Highlight this verse"}
-            >
-              <HighlightIcon size={17} color={isHighlighted ? getHighlightColor(highlightColor).accent : colors.textSecondary} />
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
-              onPress={addSelectedVerseToNewNote}
-              accessibilityRole="button"
-              accessibilityLabel="Add this verse to a new note"
-            >
-              <PlusIcon size={17} color={colors.navy} strokeWidth={2} />
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.readButton, pressed && styles.actionButtonPressed]}
-              onPress={() => router.push(`/bible-read?book=${encodeURIComponent(selected.book)}&chapter=${selected.chapter}`)}
-              accessibilityRole="button"
-              accessibilityLabel={`Read all of ${selected.book} ${selected.chapter}`}
-            >
-              <OpenBookIcon size={16} color={colors.white} />
-              <Text style={styles.readButtonText}>Read chapter</Text>
-            </Pressable>
-          </View>
-
-          {savedBookmarks.length > 0 ? (
-            <View style={{ marginTop: 26 }}>
-              <Text style={textStyles.label}>Your bookmarks</Text>
-              <View style={styles.chipRow}>
-                {savedBookmarks.map((mark) => (
-                  <Pressable
-                    key={mark.reference}
-                    style={styles.chip}
-                    onPress={() => {
-                      const resolved = getVerseCandidates(mark.reference, 1)[0];
-                      if (resolved) choose(resolved);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Go to bookmark ${mark.reference}`}
-                  >
-                    <Text style={styles.chipText}>{mark.reference}</Text>
-                  </Pressable>
-                ))}
-              </View>
+              <Text style={textStyles.verseTextLarge}>&ldquo;{selected.text}&rdquo;</Text>
             </View>
-          ) : null}
 
-          {crossRefs.length > 0 ? (
-            <View style={{ marginTop: 26 }}>
-              <Text style={textStyles.label}>Cross references</Text>
-              <View style={styles.chipRow}>
-                {crossRefs.map((ref) => (
-                  <Pressable
-                    key={ref.reference}
-                    style={styles.chip}
-                    onPress={() => choose(ref)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Go to cross reference ${ref.reference}`}
-                  >
-                    <Text style={styles.chipText}>{ref.reference}</Text>
-                  </Pressable>
-                ))}
+            {isHighlighted ? (
+              <View style={styles.colorPickerRow}>
+                <ColorSwatchRow selected={highlightColor ?? "gold"} onSelect={chooseHighlightColor} />
               </View>
+            ) : null}
+
+            <View style={styles.actionsRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  isBookmarked && styles.actionButtonActive,
+                  pressed && styles.actionButtonPressed,
+                ]}
+                onPress={toggleBookmark}
+                accessibilityRole="button"
+                accessibilityLabel={isBookmarked ? "Remove bookmark" : "Bookmark this verse"}
+              >
+                <BookmarkIcon size={17} color={isBookmarked ? colors.gold : colors.textSecondary} />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  isHighlighted && styles.actionButtonActive,
+                  pressed && styles.actionButtonPressed,
+                ]}
+                onPress={toggleHighlight}
+                accessibilityRole="button"
+                accessibilityLabel={isHighlighted ? "Remove highlight" : "Highlight this verse"}
+              >
+                <HighlightIcon size={17} color={isHighlighted ? getHighlightColor(highlightColor).accent : colors.textSecondary} />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+                onPress={addSelectedVerseToNewNote}
+                accessibilityRole="button"
+                accessibilityLabel="Add this verse to a new note"
+              >
+                <PlusIcon size={17} color={colors.navy} strokeWidth={2} />
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.readButton, pressed && styles.actionButtonPressed]}
+                onPress={() => router.push(`/bible-read?book=${encodeURIComponent(selected.book)}&chapter=${selected.chapter}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Read all of ${selected.book} ${selected.chapter}`}
+              >
+                <OpenBookIcon size={16} color={colors.white} />
+                <Text style={styles.readButtonText}>Read chapter</Text>
+              </Pressable>
             </View>
-          ) : null}
-        </ScrollView>
-      )}
+
+            {savedBookmarks.length > 0 ? (
+              <View style={{ marginTop: 26 }}>
+                <Text style={textStyles.label}>Your bookmarks</Text>
+                <View style={styles.chipRow}>
+                  {savedBookmarks.map((mark) => (
+                    <Pressable
+                      key={mark.reference}
+                      style={styles.chip}
+                      onPress={() => {
+                        const resolved = getVerseCandidates(mark.reference, 1)[0];
+                        if (resolved) choose(resolved);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Go to bookmark ${mark.reference}`}
+                    >
+                      <Text style={styles.chipText}>{mark.reference}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {crossRefs.length > 0 ? (
+              <View style={{ marginTop: 26 }}>
+                <Text style={textStyles.label}>Cross references</Text>
+                <View style={styles.chipRow}>
+                  {crossRefs.map((ref) => (
+                    <Pressable
+                      key={ref.reference}
+                      style={styles.chip}
+                      onPress={() => choose(ref)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Go to cross reference ${ref.reference}`}
+                    >
+                      <Text style={styles.chipText}>{ref.reference}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </ScrollView>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -314,6 +327,7 @@ export default function BibleScreen() {
 function makeStyles(colors: ColorPalette) {
   return StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, maxWidth: 680, width: "100%", alignSelf: "center" },
   header: {
     paddingHorizontal: 24,
     paddingTop: 8,
@@ -347,6 +361,13 @@ function makeStyles(colors: ColorPalette) {
     paddingHorizontal: 14,
   },
   searchInput: { flex: 1, fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textPrimary },
+  clearButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   content: { padding: 24, paddingBottom: 60 },
   reference: {
     fontFamily: fontFamily.sansExtraBold,

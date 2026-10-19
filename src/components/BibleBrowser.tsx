@@ -5,7 +5,7 @@ import { ColorPalette, lightColors } from "@/theme/colors";
 import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius } from "@/theme/tokens";
-import { BOOKS } from "@/data/bible";
+import { BOOKS, chapterCount } from "@/data/bible";
 import { useReadingPosition } from "@/data/readingProgress";
 import { ChevronRightIcon, OpenBookIcon } from "./icons";
 
@@ -15,6 +15,14 @@ const OT_COUNT = 39;
 
 function openChapter(book: string, chapter: number) {
   router.push(`/bible-read?book=${encodeURIComponent(book)}&chapter=${chapter}`);
+}
+
+function openBook(book: string) {
+  if (chapterCount(book) > 1) {
+    router.push(`/bible-read?book=${encodeURIComponent(book)}&chapter=1&pickChapter=1`);
+  } else {
+    openChapter(book, 1);
+  }
 }
 
 /** A large, friendly entry point into reading: picks up where the reader
@@ -58,7 +66,7 @@ function BookGroup({ title, books }: { title: string; books: string[] }) {
           <Pressable
             key={b}
             style={({ pressed }) => [styles.bookChip, pressed && { opacity: 0.6 }]}
-            onPress={() => openChapter(b, 1)}
+            onPress={() => openBook(b)}
             accessibilityRole="button"
             accessibilityLabel={`Read ${b}`}
           >

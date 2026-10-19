@@ -169,8 +169,8 @@ export default function SettingsScreen() {
 function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
-    header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
-    content: { paddingHorizontal: 24, paddingBottom: 40, alignItems: "center" },
+    header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12, maxWidth: 680, width: "100%", alignSelf: "center" },
+    content: { paddingHorizontal: 24, paddingBottom: 40, alignItems: "center", maxWidth: 680, width: "100%", alignSelf: "center" },
     avatarLarge: {
       width: 72,
       height: 72,

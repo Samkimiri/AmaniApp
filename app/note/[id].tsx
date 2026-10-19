@@ -1174,7 +1174,9 @@ export default function NoteEditorScreen() {
                 placeholderTextColor={colors.textFaint}
                 style={styles.churchInput}
               />
-              <Text style={styles.dateText}>{note.date}</Text>
+              <Text style={styles.dateText}>
+                {note.date} &middot; {saveState === "saving" ? "Saving…" : "Saved on device"}
+              </Text>
             </View>
             <View style={styles.headerActions}>
               <Pressable
@@ -1632,7 +1634,15 @@ function makeStyles(colors: ColorPalette) {
     padding: 0,
   },
   dateText: { fontFamily: fontFamily.sansMedium, fontSize: 11, color: colors.textMuted, marginTop: 1 },
-  content: { paddingHorizontal: 24, paddingTop: 6, paddingBottom: 24, gap: 14 },
+  content: {
+    paddingHorizontal: 24,
+    paddingTop: 6,
+    paddingBottom: 24,
+    gap: 14,
+    maxWidth: 680,
+    width: "100%",
+    alignSelf: "center",
+  },
   titleInput: { fontFamily: fontFamily.serifBold, fontSize: 22, lineHeight: 29, color: colors.textPrimary, padding: 0 },
   preacherInput: {
     fontFamily: fontFamily.sansMedium,

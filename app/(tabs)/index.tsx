@@ -92,9 +92,14 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.brandText}>Amani</Text>
           </View>
-          <View style={styles.avatar}>
+          <Pressable
+            onPress={() => router.push("/settings")}
+            style={({ pressed }) => [styles.avatar, pressed && { opacity: 0.75 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+          >
             <UserIcon size={18} color={colors.avatarIcon} />
-          </View>
+          </Pressable>
         </View>
 
         <View style={styles.hero}>
@@ -107,7 +112,16 @@ export default function HomeScreen() {
 
         {verseOfTheDay ? (
           <View style={{ marginTop: 20 }}>
-            <VerseOfTheDayCard verse={verseOfTheDay} onShare={shareDailyVerse} sharing={sharingVerse} />
+            <VerseOfTheDayCard
+              verse={verseOfTheDay}
+              onPress={() =>
+                router.push(
+                  `/bible-read?book=${encodeURIComponent(verseOfTheDay.book)}&chapter=${verseOfTheDay.chapter}&verse=${verseOfTheDay.verse}`
+                )
+              }
+              onShare={shareDailyVerse}
+              sharing={sharingVerse}
+            />
           </View>
         ) : null}
 
@@ -200,11 +214,12 @@ export default function HomeScreen() {
       >
         <Pressable style={styles.pickerScrim} onPress={() => setTemplatePickerOpen(false)} />
         <View style={styles.pickerSheet}>
+          <View style={styles.grabber} />
           <Text style={styles.pickerTitle}>Start a new note</Text>
           {NOTE_TEMPLATES.map((t) => (
             <Pressable
               key={t.id}
-              style={styles.pickerRow}
+              style={({ pressed }) => [styles.pickerRow, pressed && styles.pickerRowPressed]}
               onPress={() => startNoteFromTemplate(t.id)}
               accessibilityRole="button"
               accessibilityLabel={`${t.name} — ${t.description}`}
@@ -225,7 +240,7 @@ export default function HomeScreen() {
 function makeStyles(colors: ColorPalette, shadows: Shadows) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
-    content: { padding: 24, paddingBottom: 40 },
+    content: { padding: 24, paddingBottom: 40, maxWidth: 680, width: "100%", alignSelf: "center" },
     offscreen: { position: "absolute", top: 0, left: -9999, width: VERSE_CARD_WIDTH, height: VERSE_CARD_HEIGHT },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     brand: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -327,14 +342,31 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       borderTopLeftRadius: 22,
       borderTopRightRadius: 22,
       paddingHorizontal: 22,
-      paddingTop: 18,
+      paddingTop: 12,
       paddingBottom: 34,
+      maxWidth: 680,
+      width: "100%",
+      alignSelf: "center",
+    },
+    grabber: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.grabber,
+      alignSelf: "center",
+      marginBottom: 14,
     },
     pickerTitle: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary, marginBottom: 10 },
     pickerRow: {
       paddingVertical: 13,
+      paddingHorizontal: 8,
+      marginHorizontal: -8,
+      borderRadius: radius.sm,
       borderBottomWidth: 1,
       borderBottomColor: colors.borderLight,
+    },
+    pickerRowPressed: {
+      backgroundColor: colors.surfaceMuted,
     },
     pickerRowName: { fontFamily: fontFamily.sansBold, fontSize: 14.5, color: colors.textPrimary },
     pickerRowDescription: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 2 },

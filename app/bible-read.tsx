@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Speech from "expo-speech";
@@ -47,8 +47,15 @@ import { ReaderSettingsSheet } from "@/components/ReaderSettingsSheet";
  * to move through what's already there.
  */
 export default function BibleReadScreen() {
-  const params = useLocalSearchParams<{ book?: string; chapter?: string; verse?: string; endVerse?: string }>();
-  const [book, setBook] = useState(params.book && BOOKS.includes(params.book) ? params.book : BOOKS[0]);
+  const params = useLocalSearchParams<{
+    book?: string;
+    chapter?: string;
+    verse?: string;
+    endVerse?: string;
+    pickChapter?: string;
+  }>();
+  const initialBook = params.book && BOOKS.includes(params.book) ? params.book : BOOKS[0];
+  const [book, setBook] = useState(initialBook);
   const [chapter, setChapter] = useState(() => {
     const n = Number(params.chapter);
     return Number.isFinite(n) && n > 0 ? n : 1;
@@ -92,8 +99,10 @@ export default function BibleReadScreen() {
   const { layout } = settings;
   const [versionPickerOpen, setVersionPickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerBook, setPickerBook] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(params.pickChapter === "1");
+  const [pickerBook, setPickerBook] = useState<string | null>(
+    params.pickChapter === "1" ? initialBook : null
+  );
   const [actionVerse, setActionVerse] = useState<VerseResult | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const [highlightMap, setHighlightMap] = useState<Record<string, string | undefined>>({});
@@ -257,6 +266,28 @@ export default function BibleReadScreen() {
 
   const isFirstChapter = chapter === 1 && bookIndex === 0;
   const isLastChapter = chapter === totalChapters && bookIndex === BOOKS.length - 1;
+
+  // Web keyboard navigation: Left/Right arrow keys move between chapters when
+  // no modal or bottom sheet is open.
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    if (pickerOpen || versionPickerOpen || settingsOpen || actionVerse !== null) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowLeft" && !isFirstChapter) {
+        e.preventDefault();
+        previousChapter();
+      } else if (e.key === "ArrowRight" && !isLastChapter) {
+        e.preventDefault();
+        nextChapter();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book, chapter, pickerOpen, versionPickerOpen, settingsOpen, actionVerse, isFirstChapter, isLastChapter]);
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -500,11 +531,14 @@ function makeStyles(colors: ColorPalette, settings: ReaderSettings) {
       justifyContent: "space-between",
       paddingHorizontal: 8,
       paddingBottom: 8,
+      maxWidth: 680,
+      width: "100%",
+      alignSelf: "center",
     },
     headerButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     titleButton: { flexDirection: "row", alignItems: "center", gap: 6 },
     titleText: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary },
-    content: { paddingHorizontal: 24, paddingBottom: 40 },
+    content: { paddingHorizontal: 24, paddingBottom: 40, maxWidth: 680, width: "100%", alignSelf: "center" },
     bookHeading: { fontFamily: fontFamily.sansExtraBold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: colors.gold, marginTop: 6 },
     chapterHeading: { fontFamily: fontFamily.serifBold, fontSize: 34, color: colors.textPrimary, marginTop: 2 },
     headingRule: { width: 44, height: 3, borderRadius: 2, backgroundColor: colors.gold, marginTop: 12, marginBottom: 16 },
@@ -545,6 +579,9 @@ function makeStyles(colors: ColorPalette, settings: ReaderSettings) {
       paddingHorizontal: 18,
       paddingVertical: 14,
       gap: 10,
+      maxWidth: 680,
+      width: "100%",
+      alignSelf: "center",
     },
     navButton: {
       flex: 1,
@@ -570,6 +607,9 @@ function makeStyles(colors: ColorPalette, settings: ReaderSettings) {
       paddingTop: 18,
       paddingBottom: 24,
       maxHeight: "75%",
+      maxWidth: 680,
+      width: "100%",
+      alignSelf: "center",
     },
     pickerHeaderRow: { flexDirection: "row", justifyContent: "flex-start" },
     pickerBackButton: { paddingVertical: 4 },

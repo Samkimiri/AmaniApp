@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
-import { NotesIcon, SearchIcon } from "@/components/icons";
+import { CloseIcon, NotesIcon, PlusIcon, SearchIcon } from "@/components/icons";
 import { NoteCard } from "@/components/NoteCard";
 import { SwipeToDelete } from "@/components/SwipeToDelete";
 import { FadeInView } from "@/components/Motion";
@@ -82,84 +82,114 @@ export default function NotesScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={textStyles.screenTitle}>Your notes</Text>
-        {notes.length > 0 ? (
-          <Text style={styles.hint}>
-            {notes.length} {notes.length === 1 ? "note" : "notes"} &middot; swipe left or hold to delete
-          </Text>
-        ) : null}
-      </View>
-
-      {notes.length > 0 ? (
-        <View style={styles.searchBar}>
-          <SearchIcon size={16} color={colors.textMuted} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search your notes"
-            placeholderTextColor={colors.textMuted}
-            style={styles.searchInput}
-            autoCorrect={false}
-          />
-        </View>
-      ) : null}
-
-      {allTags.length > 0 ? (
-        <FlatList
-          horizontal
-          data={allTags}
-          keyExtractor={(t) => t}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tagRow}
-          renderItem={({ item: tag }) => (
-            <Pressable
-              style={[styles.tagChip, activeTag === tag && styles.tagChipActive]}
-              onPress={() => setActiveTag((current) => (current === tag ? null : tag))}
-              accessibilityRole="button"
-              accessibilityLabel={activeTag === tag ? `Clear tag filter #${tag}` : `Filter by tag #${tag}`}
-            >
-              <Text style={[styles.tagChipText, activeTag === tag && styles.tagChipTextActive]}>#{tag}</Text>
-            </Pressable>
-          )}
-        />
-      ) : null}
-
-      <FlatList
-        data={filtered}
-        keyExtractor={(n) => n.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item, index }) => (
-          <FadeInView delay={Math.min(index, 8) * 35}>
-            <SwipeToDelete
-              onDelete={async () => {
-                await notesStore.remove(item.id);
-                reload();
-              }}
-            >
-              <NoteCard
-                note={item}
-                onPress={() => router.push(`/note/${item.id}`)}
-                onLongPress={() => confirmDelete(item.id, item.title)}
-              />
-            </SwipeToDelete>
-          </FadeInView>
-        )}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <View style={styles.emptyIcon}>
-              <NotesIcon size={26} color={colors.navy} />
-            </View>
-            <Text style={styles.emptyTitle}>{isFiltering ? "No matches" : "Your notes live here"}</Text>
-            <Text style={styles.emptyText}>
-              {isFiltering
-                ? "Try a different search, or clear the tag filter."
-                : "Notes you take during a sermon show up here, saved automatically on this device."}
-            </Text>
+      <View style={styles.container}>
+        <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={textStyles.screenTitle}>Your notes</Text>
+            {notes.length > 0 ? (
+              <Text style={styles.hint}>
+                {notes.length} {notes.length === 1 ? "note" : "notes"} &middot; swipe left or hold to delete
+              </Text>
+            ) : null}
           </View>
-        }
-      />
+          <Pressable
+            onPress={() => router.push("/note/new")}
+            style={({ pressed }) => [styles.newButton, pressed && { opacity: 0.85 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Create a new sermon note"
+          >
+            <PlusIcon size={15} color={colors.white} />
+            <Text style={styles.newButtonText}>New</Text>
+          </Pressable>
+        </View>
+
+        {notes.length > 0 ? (
+          <View style={styles.searchBar}>
+            <SearchIcon size={16} color={colors.textMuted} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search your notes"
+              placeholderTextColor={colors.textMuted}
+              style={styles.searchInput}
+              autoCorrect={false}
+            />
+            {query.length > 0 ? (
+              <Pressable
+                onPress={() => setQuery("")}
+                hitSlop={8}
+                style={styles.clearButton}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
+                <CloseIcon size={14} color={colors.textMuted} />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        {allTags.length > 0 ? (
+          <FlatList
+            horizontal
+            data={allTags}
+            keyExtractor={(t) => t}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tagRow}
+            renderItem={({ item: tag }) => (
+              <Pressable
+                style={[styles.tagChip, activeTag === tag && styles.tagChipActive]}
+                onPress={() => setActiveTag((current) => (current === tag ? null : tag))}
+                accessibilityRole="button"
+                accessibilityLabel={activeTag === tag ? `Clear tag filter #${tag}` : `Filter by tag #${tag}`}
+              >
+                <Text style={[styles.tagChipText, activeTag === tag && styles.tagChipTextActive]}>#{tag}</Text>
+              </Pressable>
+            )}
+          />
+        ) : null}
+
+        <FlatList
+          data={filtered}
+          keyExtractor={(n) => n.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item, index }) => (
+            <FadeInView delay={Math.min(index, 8) * 35}>
+              <SwipeToDelete onDelete={() => confirmDelete(item.id, item.title)}>
+                <NoteCard
+                  note={item}
+                  onPress={() => router.push(`/note/${item.id}`)}
+                  onLongPress={() => confirmDelete(item.id, item.title)}
+                />
+              </SwipeToDelete>
+            </FadeInView>
+          )}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <NotesIcon size={26} color={colors.navy} />
+              </View>
+              <Text style={styles.emptyTitle}>{isFiltering ? "No matches" : "Your notes live here"}</Text>
+              <Text style={styles.emptyText}>
+                {isFiltering
+                  ? "Try a different search, or clear the tag filter."
+                  : "Notes you take during a sermon show up here, saved automatically on this device."}
+              </Text>
+              {!isFiltering ? (
+                <Pressable
+                  onPress={() => router.push("/note/new")}
+                  style={({ pressed }) => [styles.emptyCta, pressed && { opacity: 0.85 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Start your first sermon note"
+                >
+                  <PlusIcon size={15} color={colors.white} />
+                  <Text style={styles.newButtonText}>New sermon note</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          }
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -167,8 +197,27 @@ export default function NotesScreen() {
 function makeStyles(colors: ColorPalette) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
-    header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
+    container: { flex: 1, maxWidth: 680, width: "100%", alignSelf: "center" },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 12,
+      gap: 12,
+    },
     hint: { fontSize: 12, color: colors.textFaint, marginTop: 2 },
+    newButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.navy,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      borderRadius: radius.pill,
+    },
+    newButtonText: { fontFamily: fontFamily.sansBold, fontSize: 13, color: colors.white },
     searchBar: {
       marginHorizontal: 24,
       marginBottom: 12,
@@ -183,6 +232,13 @@ function makeStyles(colors: ColorPalette) {
       paddingHorizontal: 14,
     },
     searchInput: { flex: 1, fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textPrimary },
+    clearButton: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     tagRow: { paddingHorizontal: 24, gap: 8, paddingBottom: 14 },
     tagChip: {
       height: 32,
@@ -209,6 +265,22 @@ function makeStyles(colors: ColorPalette) {
       marginBottom: 6,
     },
     emptyTitle: { fontFamily: fontFamily.serifSemibold, fontSize: 17, color: colors.textPrimary },
-    emptyText: { fontFamily: fontFamily.sansRegular, fontSize: 13.5, color: colors.textSecondary, lineHeight: 20, textAlign: "center" },
+    emptyText: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 13.5,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      textAlign: "center",
+    },
+    emptyCta: {
+      marginTop: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.navy,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: radius.pill,
+    },
   });
 }

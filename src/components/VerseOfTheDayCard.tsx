@@ -14,10 +14,12 @@ import { VerseResult } from "@/data/bible";
  * consistent branded card, not a themed surface. */
 export function VerseOfTheDayCard({
   verse,
+  onPress,
   onShare,
   sharing,
 }: {
   verse: VerseResult;
+  onPress?: () => void;
   onShare?: () => void;
   sharing?: boolean;
 }) {
@@ -41,8 +43,16 @@ export function VerseOfTheDayCard({
           </Pressable>
         ) : null}
       </View>
-      <Text style={styles.text}>&ldquo;{verse.text}&rdquo;</Text>
-      <Text style={styles.reference}>{verse.reference}</Text>
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
+        style={({ pressed }) => [styles.bodyWrap, onPress && pressed && { opacity: 0.82 }]}
+        accessibilityRole={onPress ? "button" : undefined}
+        accessibilityLabel={onPress ? `Read ${verse.reference} in the Bible` : undefined}
+      >
+        <Text style={styles.text}>&ldquo;{verse.text}&rdquo;</Text>
+        <Text style={styles.reference}>{verse.reference}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -52,6 +62,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy,
     borderRadius: 18,
     padding: 20,
+    gap: 10,
+  },
+  bodyWrap: {
     gap: 10,
   },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
