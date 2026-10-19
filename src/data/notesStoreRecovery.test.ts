@@ -108,6 +108,17 @@ describe("notesStore recovery", () => {
     expect(await AsyncStorage.getItem(LIVE_KEY)).toBe("[]");
     expect(await notesStore.getAll()).toEqual([]);
   });
+
+  it("recovers from localStorage quota exhaustion by freeing the duplicate backup key and retrying", async () => {
+    await notesStore.save(makeNote({ id: "first", title: "First note" }));
+    expect(await AsyncStorage.getItem(BACKUP_KEY)).not.toBeNull();
+
+    (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error("QuotaExceededError"));
+
+    await notesStore.save(makeNote({ id: "second", title: "Saved despite quota pressure" }));
+
+    expect((await notesStore.getAll()).map((n) => n.id).sort()).toEqual(["first", "second"]);
+  });
 });
 
 describe("notesStore.recover (deep scan)", () => {

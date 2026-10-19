@@ -3,6 +3,7 @@ import { NoteBlock, SermonNote } from "@/types/note";
 import { deleteRecording } from "@/data/audioStorage";
 import { deleteImage } from "@/data/imageStorage";
 import { mergeNotes, needsRepair, normalizeNote, notesInPayload, salvageNotes } from "@/data/notesRecovery";
+import { readNotesMirror, writeNotesMirror } from "@/data/storageDurability";
 
 const STORAGE_KEY = "amani.notes.v1";
 /** The last payload we could read back in full. If the live key is ever
@@ -73,7 +74,17 @@ async function quarantine(raw: string): Promise<void> {
  */
 async function readAll(): Promise<SermonNote[]> {
   const raw = await readRaw();
-  if (!raw) return []; // nothing has ever been saved on this device
+  if (!raw) {
+    // Primary AsyncStorage key is absent — check if our secondary engine
+    // mirror (IndexedDB on web, document directory on native) still holds
+    // a snapshot (e.g. if browser localStorage was cleared independently).
+    const mirrorRaw = await readNotesMirror();
+    if (!mirrorRaw) return [];
+    const parsedMirror = parseStoredNotes(mirrorRaw);
+    const restored = parsedMirror ? parsedMirror.notes : salvageNotes(mirrorRaw);
+    if (restored.length > 0) await writeAll(restored).catch(() => {});
+    return restored;
+  }
 
   const parsed = parseStoredNotes(raw);
   if (parsed) {
@@ -86,8 +97,15 @@ async function readAll(): Promise<SermonNote[]> {
   }
 
   await quarantine(raw);
-  const backupRaw = await AsyncStorage.getItem(BACKUP_KEY).catch(() => null);
-  const recovered = mergeNotes(salvageNotes(raw), salvageNotes(backupRaw));
+  const [backupRaw, mirrorRaw] = await Promise.all([
+    AsyncStorage.getItem(BACKUP_KEY).catch(() => null),
+    readNotesMirror(),
+  ]);
+  const recovered = mergeNotes(
+    salvageNotes(raw),
+    salvageNotes(backupRaw),
+    salvageNotes(mirrorRaw)
+  );
   // Make the recovery durable, so the damaged payload isn't re-salvaged on
   // every load. If nothing at all could be recovered we deliberately leave
   // the live key alone rather than overwriting it with the empty result.
@@ -97,7 +115,18 @@ async function readAll(): Promise<SermonNote[]> {
 
 async function writeAll(notes: SermonNote[]): Promise<void> {
   const payload = JSON.stringify(notes);
-  await AsyncStorage.setItem(STORAGE_KEY, payload);
+  // Mirror into IndexedDB (web) / document file (native) in parallel so a
+  // separate storage engine always holds a complete copy.
+  await writeNotesMirror(payload);
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, payload);
+  } catch {
+    // On web, localStorage has a ~5 MB ceiling shared between STORAGE_KEY and
+    // BACKUP_KEY. If we hit QuotaExceededError, free BACKUP_KEY in localStorage
+    // (since IndexedDB already holds the mirror) and retry the primary write.
+    await AsyncStorage.removeItem(BACKUP_KEY).catch(() => {});
+    await AsyncStorage.setItem(STORAGE_KEY, payload);
+  }
   // Move the known-good marker forward only once the live write succeeded.
   await AsyncStorage.setItem(BACKUP_KEY, payload).catch(() => {});
 }
@@ -206,10 +235,11 @@ export const notesStore = {
       // Snapshot the stored copies *before* any recovery runs, so the count
       // reflects the notes this scan actually brought back rather than
       // whatever the automatic recovery already did on the way in.
-      const [raw, backupRaw, quarantineRaw] = await Promise.all([
+      const [raw, backupRaw, quarantineRaw, mirrorRaw] = await Promise.all([
         readRaw(),
         AsyncStorage.getItem(BACKUP_KEY).catch(() => null),
         AsyncStorage.getItem(QUARANTINE_KEY).catch(() => null),
+        readNotesMirror(),
       ]);
       const wouldHaveLoaded = parseStoredNotes(raw)?.notes ?? [];
 
@@ -219,6 +249,7 @@ export const notesStore = {
         salvageNotes(raw),
         salvageNotes(backupRaw),
         salvageNotes(quarantineRaw),
+        salvageNotes(mirrorRaw),
         await scanEveryStoredKey()
       );
 

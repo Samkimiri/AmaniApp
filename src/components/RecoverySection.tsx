@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ColorPalette } from "@/theme/colors";
 import { useColors, useShadows } from "@/context/ThemeContext";
@@ -6,8 +6,15 @@ import { fontFamily } from "@/theme/typography";
 import { radius, Shadows, spacing } from "@/theme/tokens";
 import { SearchIcon } from "./icons";
 import { notesStore } from "@/data/notesStore";
+import { getStorageHealth, requestPersistentStorage, StorageHealth } from "@/data/storageDurability";
 import { useAlert } from "@/context/AlertContext";
 import { useToast } from "@/context/ToastContext";
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 /** The last thing to try when someone's notes aren't showing up: scan
  * everything still on this device for notes the app isn't loading, and add
@@ -17,11 +24,26 @@ import { useToast } from "@/context/ToastContext";
  * from a backup (see Backup above). */
 export function RecoverySection() {
   const [busy, setBusy] = useState(false);
+  const [health, setHealth] = useState<StorageHealth | null>(null);
   const showAlert = useAlert();
   const showToast = useToast();
   const colors = useColors();
   const shadows = useShadows();
   const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
+
+  useEffect(() => {
+    let alive = true;
+    requestPersistentStorage()
+      .catch(() => false)
+      .then(() => getStorageHealth())
+      .then((h) => {
+        if (alive) setHealth(h);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   async function handleRecover() {
     try {
@@ -43,6 +65,18 @@ export function RecoverySection() {
     }
   }
 
+  const protectionLabel = health
+    ? [
+        health.persisted ? "Persistent browser storage active" : "Local device storage active",
+        health.mirrorAvailable ? "Dual-engine backup enabled" : null,
+        typeof health.usageBytes === "number" && health.usageBytes > 0
+          ? `${formatBytes(health.usageBytes)} used`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
@@ -56,6 +90,13 @@ export function RecoverySection() {
           </Text>
         </View>
       </View>
+
+      {protectionLabel ? (
+        <View style={styles.statusRow}>
+          <View style={styles.statusDot} />
+          <Text style={styles.statusText}>{protectionLabel}</Text>
+        </View>
+      ) : null}
 
       <Pressable
         style={[styles.button, styles.buttonPrimary]}
@@ -98,6 +139,27 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       marginTop: 2,
       lineHeight: 17,
     },
+    statusRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      marginTop: 12,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.gold,
+    },
+    statusText: {
+      flex: 1,
+      fontFamily: fontFamily.sansMedium,
+      fontSize: 11.5,
+      color: colors.textSecondary,
+    },
     button: {
       height: 42,
       borderRadius: 10,
@@ -106,7 +168,7 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: 8,
-      marginTop: 16,
+      marginTop: 12,
     },
     buttonPrimary: { backgroundColor: colors.navy, borderColor: colors.navy },
     buttonPrimaryText: { fontFamily: fontFamily.sansBold, fontSize: 12.5, color: colors.white },

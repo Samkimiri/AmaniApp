@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AppState,
   Keyboard,
   KeyboardAvoidingView,
   NativeSyntheticEvent,
@@ -407,6 +408,11 @@ export default function NoteEditorScreen() {
   // Debounced autosave whenever the note changes — but never persist a
   // still-blank note, so opening "New sermon note" and backing out without
   // typing anything doesn't leave a ghost "Untitled note" in the list.
+  const latestNoteRef = useRef(note);
+  latestNoteRef.current = note;
+  const loadedRef = useRef(loaded);
+  loadedRef.current = loaded;
+
   useEffect(() => {
     if (!loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -416,6 +422,7 @@ export default function NoteEditorScreen() {
     }
     setSaveState("saving");
     saveTimer.current = setTimeout(async () => {
+      saveTimer.current = undefined;
       await notesStore.save({ ...note, updatedAt: new Date().toISOString() });
       setSaveState("saved");
     }, 500);
@@ -424,6 +431,42 @@ export default function NoteEditorScreen() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note, loaded]);
+
+  // Flush any pending debounced save immediately when the user switches tabs,
+  // closes the browser window, or locks their phone screen within the 500ms window.
+  useEffect(() => {
+    const flushPendingSave = () => {
+      if (!loadedRef.current || isBlankNote(latestNoteRef.current)) return;
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = undefined;
+      }
+      notesStore
+        .save({ ...latestNoteRef.current, updatedAt: new Date().toISOString() })
+        .catch(() => {});
+    };
+
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") flushPendingSave();
+    });
+
+    if (Platform.OS === "web" && typeof document !== "undefined" && typeof window !== "undefined") {
+      const onVisibilityChange = () => {
+        if (document.visibilityState === "hidden") flushPendingSave();
+      };
+      document.addEventListener("visibilitychange", onVisibilityChange);
+      window.addEventListener("pagehide", flushPendingSave);
+      return () => {
+        sub.remove();
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+        window.removeEventListener("pagehide", flushPendingSave);
+      };
+    }
+
+    return () => {
+      sub.remove();
+    };
+  }, []);
 
   // Undo/redo history — a debounced checkpoint per pause in typing (not
   // one per keystroke, which would make a single held-down backspace or a

@@ -13,6 +13,7 @@ import { ThemeProvider, useColors, useTheme } from "@/context/ThemeContext";
 import { LockScreen } from "@/components/LockScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { loadSavedTranslation } from "@/data/bible";
+import { requestPersistentStorage } from "@/data/storageDurability";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -21,6 +22,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // this settles — without that, the very first frame could render a screen
 // against an empty Bible now that the verse text loads lazily.
 const bibleReady = loadSavedTranslation();
+requestPersistentStorage().catch(() => {});
 
 /** Decides between the locked PIN screen and the real app, once app-lock
  * settings have loaded. Kept separate from RootLayout so it can read the
