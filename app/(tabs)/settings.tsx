@@ -6,11 +6,12 @@ import { ColorPalette } from "@/theme/colors";
 import { useColors, useShadows, useTextStyles, useTheme, type ThemeMode } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius, Shadows, spacing } from "@/theme/tokens";
-import { ChartIcon, ChevronRightIcon, DocumentIcon, MoonIcon, OpenBookIcon, UserIcon } from "@/components/icons";
+import { ChartIcon, ChevronRightIcon, DocumentIcon, MoonIcon, OpenBookIcon, PlayIcon, UserIcon } from "@/components/icons";
 import { AppLockSection } from "@/components/AppLockSection";
 import { BackupSection } from "@/components/BackupSection";
 import { RecoverySection } from "@/components/RecoverySection";
 import { GoogleDriveSection } from "@/components/GoogleDriveSection";
+import { AmaniVideoModal } from "@/components/AmaniVideoModal";
 import {
   AVAILABLE_TRANSLATIONS,
   setActiveTranslation,
@@ -29,6 +30,7 @@ const THEME_OPTIONS: { mode: ThemeMode; label: string }[] = [
 export default function SettingsScreen() {
   const translationCode = useActiveTranslation(); // subscribes so this screen re-renders when the Bible tab switches translations
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
   const colors = useColors();
   const textStyles = useTextStyles();
   const { mode, setMode } = useTheme();
@@ -124,6 +126,17 @@ export default function SettingsScreen() {
           <ChevronRightIcon size={16} color={colors.textFaint} />
         </Pressable>
 
+        <Pressable
+          style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+          onPress={() => setVideoModalOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Watch the 36-second Amani overview video"
+        >
+          <PlayIcon size={15} color={colors.navy} />
+          <Text style={styles.linkRowText}>Watch Amani video tour (0:36)</Text>
+          <ChevronRightIcon size={16} color={colors.textFaint} />
+        </Pressable>
+
         <AppLockSection />
         <BackupSection />
         <RecoverySection />
@@ -147,6 +160,8 @@ export default function SettingsScreen() {
           Typeset in Newsreader &amp; Plus Jakarta Sans (SIL Open Font License).
         </Text>
       </ScrollView>
+
+      <AmaniVideoModal visible={videoModalOpen} onClose={() => setVideoModalOpen(false)} />
     </SafeAreaView>
   );
 }

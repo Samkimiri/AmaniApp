@@ -147,7 +147,10 @@ function fromBase64Url(token: string): string | null {
       bytes.push((buffer >> bits) & 0xff);
     }
   }
-  /* ---------------------------------- payload ---------------------------------- */
+  return utf8Decode(bytes);
+}
+
+/* ---------------------------------- payload ---------------------------------- */
 
 function isMediaBlock(block: NoteBlock): boolean {
   return block.type === "image" || block.type === "audio";
