@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/theme/colors";
 import { fontFamily } from "@/theme/typography";
 import { OpenBookIcon, ShareArrowIcon } from "./icons";
-import { VerseWatermarkGraphic } from "./Graphics";
 import { VerseResult } from "@/data/bible";
 
 /** A daily-scripture card for the Home screen — the first thing a user
@@ -24,9 +23,6 @@ export function VerseOfTheDayCard({
 }) {
   return (
     <View style={styles.card}>
-      <View style={[styles.watermark, { pointerEvents: "none" }]} aria-hidden>
-        <VerseWatermarkGraphic size={136} />
-      </View>
       <View style={styles.headerRow}>
         <View style={styles.headerLabelRow}>
           <OpenBookIcon size={15} color={colors.goldLight} />
@@ -53,17 +49,10 @@ export function VerseOfTheDayCard({
 
 const styles = StyleSheet.create({
   card: {
-    position: "relative",
-    overflow: "hidden",
     backgroundColor: colors.navy,
     borderRadius: 18,
     padding: 20,
     gap: 10,
-  },
-  watermark: {
-    position: "absolute",
-    top: -12,
-    right: -12,
   },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   headerLabelRow: { flexDirection: "row", alignItems: "center", gap: 8 },

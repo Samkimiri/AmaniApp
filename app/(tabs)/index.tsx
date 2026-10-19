@@ -7,7 +7,7 @@ import { ColorPalette } from "@/theme/colors";
 import { useColors, useShadows, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius, Shadows, spacing } from "@/theme/tokens";
-import { OpenBookIcon, PlayIcon, PlusIcon, NotesIcon, UserIcon } from "@/components/icons";
+import { OpenBookIcon, PlusIcon, NotesIcon, UserIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { NoteCard } from "@/components/NoteCard";
 import { VerseOfTheDayCard } from "@/components/VerseOfTheDayCard";
@@ -23,7 +23,6 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { FadeInView, PressableScale } from "@/components/Motion";
 import { ContinueReadingCard } from "@/components/BibleBrowser";
-import { HeroSunburstGraphic } from "@/components/Graphics";
 import { AmaniVideoModal, DiscoverAmaniCard, useDiscoverVideo } from "@/components/AmaniVideoModal";
 
 function greeting(): string {
@@ -93,31 +92,12 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.brandText}>Amani</Text>
           </View>
-          <View style={styles.headerRight}>
-            <Pressable
-              onPress={() => setVideoModalOpen(true)}
-              style={styles.tourChip}
-              accessibilityRole="button"
-              accessibilityLabel="Watch 36-second app tour video"
-            >
-              <PlayIcon size={10} color={colors.gold} />
-              <Text style={styles.tourChipText}>App tour</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/settings")}
-              style={styles.avatar}
-              accessibilityRole="button"
-              accessibilityLabel="Open settings"
-            >
-              <UserIcon size={18} color={colors.avatarIcon} />
-            </Pressable>
+          <View style={styles.avatar}>
+            <UserIcon size={18} color={colors.avatarIcon} />
           </View>
         </View>
 
         <View style={styles.hero}>
-          <View style={[styles.heroArtwork, { pointerEvents: "none" }]} aria-hidden>
-            <HeroSunburstGraphic width={175} height={106} />
-          </View>
           <Text style={styles.date}>{today}</Text>
           <Text style={styles.heroTitle}>{greeting()}</Text>
           <View style={styles.heroRule} />
@@ -258,23 +238,6 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       justifyContent: "center",
     },
     brandText: { fontFamily: fontFamily.serifBold, fontSize: 21, color: colors.navy },
-    headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
-    tourChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      backgroundColor: colors.verseBg,
-      borderWidth: 1,
-      borderColor: colors.verseBorder,
-      paddingHorizontal: 11,
-      paddingVertical: 7,
-      borderRadius: radius.pill,
-    },
-    tourChipText: {
-      fontFamily: fontFamily.sansBold,
-      fontSize: 11.5,
-      color: colors.verseText,
-    },
     avatar: {
       width: 44,
       height: 44,
@@ -283,12 +246,7 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       alignItems: "center",
       justifyContent: "center",
     },
-    hero: { position: "relative", marginTop: spacing.lg + 2 },
-    heroArtwork: {
-      position: "absolute",
-      top: -18,
-      right: -8,
-    },
+    hero: { marginTop: spacing.lg + 2 },
     date: {
       fontFamily: fontFamily.sansBold,
       fontSize: 11,
