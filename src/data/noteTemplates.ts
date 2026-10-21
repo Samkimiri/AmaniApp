@@ -57,6 +57,21 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
     ],
   },
   {
+    id: "soap",
+    name: "SOAP devotional",
+    description: "Scripture, observation, application, and prayer",
+    buildBlocks: () => [
+      headingBlock("Scripture"),
+      textBlock(),
+      headingBlock("Observation"),
+      textBlock(),
+      headingBlock("Application"),
+      textBlock(),
+      headingBlock("Prayer"),
+      textBlock(),
+    ],
+  },
+  {
     id: "testimony",
     name: "Testimony / life group",
     description: "A lighter structure for sharing or small-group discussion",

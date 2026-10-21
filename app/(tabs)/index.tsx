@@ -7,13 +7,15 @@ import { ColorPalette } from "@/theme/colors";
 import { useColors, useShadows, useTextStyles } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius, Shadows, spacing } from "@/theme/tokens";
-import { OpenBookIcon, PlusIcon, NotesIcon, UserIcon } from "@/components/icons";
+import { OpenBookIcon, PlusIcon, NotesIcon, UserIcon, CompassIcon, ChevronRightIcon, ChecklistIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { NoteCard } from "@/components/NoteCard";
 import { VerseOfTheDayCard } from "@/components/VerseOfTheDayCard";
 import { VerseImageCard, VERSE_CARD_HEIGHT, VERSE_CARD_WIDTH } from "@/components/VerseImageCard";
 import { InstallBanner } from "@/components/InstallBanner";
 import { useNotes } from "@/hooks/useNotes";
+import { notesStore } from "@/data/notesStore";
+import { devotionalOfTheDay } from "@/data/devotionals";
 import { getVerseOfTheDay } from "@/data/verseOfTheDay";
 import { useActiveTranslation } from "@/data/bible";
 import { shareVerseImageUri } from "@/lib/shareVerseImage";
@@ -33,8 +35,42 @@ function greeting(): string {
 }
 
 export default function HomeScreen() {
-  const { notes } = useNotes();
-  const latest = notes[0];
+  const { notes, reload } = useNotes();
+  const pinned = notes.filter((n) => n.pinned).slice(0, 3);
+  const latest = notes.find((n) => !n.pinned);
+  const todaysDevotional = React.useMemo(() => devotionalOfTheDay(), []);
+
+  // Unfinished action steps from the most recent notes, so a response
+  // written down on Sunday stays in view during the week.
+  const actionSteps = React.useMemo(() => {
+    const items: { noteId: string; noteTitle: string; blockId: string; itemId: string; text: string }[] = [];
+    for (const n of notes.slice(0, 8)) {
+      for (const b of n.blocks ?? []) {
+        if (!b || b.type !== "checklist") continue;
+        for (const i of b.items ?? []) {
+          if (!i.done && i.text?.trim()) {
+            items.push({ noteId: n.id, noteTitle: n.title || "Untitled note", blockId: b.id, itemId: i.id, text: i.text.trim() });
+          }
+        }
+      }
+    }
+    return items.slice(0, 5);
+  }, [notes]);
+
+  async function completeActionStep(noteId: string, blockId: string, itemId: string) {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    await notesStore.save({
+      ...note,
+      blocks: note.blocks.map((b) =>
+        b.id === blockId && b.type === "checklist"
+          ? { ...b, items: b.items.map((i) => (i.id === itemId ? { ...i, done: true } : i)) }
+          : b
+      ),
+      updatedAt: new Date().toISOString(),
+    });
+    reload();
+  }
   const translationCode = useActiveTranslation();
   const verseOfTheDay = React.useMemo(
     () => getVerseOfTheDay(),
@@ -138,6 +174,25 @@ export default function HomeScreen() {
           <ContinueReadingCard />
         </View>
 
+        <PressableScale
+          style={[styles.devotionalCard, { marginTop: 14 }]}
+          onPress={() => router.push(`/devotional/${todaysDevotional.id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`Today's devotional: ${todaysDevotional.title}`}
+        >
+          <View style={styles.tileIcon}>
+            <CompassIcon size={20} color={colors.navy} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.devotionalLabel}>Today&apos;s devotional</Text>
+            <Text style={styles.devotionalTitle}>{todaysDevotional.title}</Text>
+            <Text style={styles.devotionalSummary} numberOfLines={1}>
+              {todaysDevotional.summary}
+            </Text>
+          </View>
+          <ChevronRightIcon size={16} color={colors.textFaint} />
+        </PressableScale>
+
         <PrimaryButton
           label="New sermon note"
           icon={<PlusIcon size={18} />}
@@ -145,6 +200,54 @@ export default function HomeScreen() {
           style={{ marginTop: 20 }}
         />
 
+        {actionSteps.length > 0 ? (
+          <View style={{ marginTop: spacing.xxl - 4 }}>
+            <View style={styles.sectionHeader}>
+              <Text style={textStyles.label}>This week&apos;s action steps</Text>
+              <View style={styles.sectionRule} />
+            </View>
+            <View style={styles.actionCard}>
+              {actionSteps.map((step) => (
+                <View key={`${step.noteId}-${step.itemId}`} style={styles.actionRow}>
+                  <Pressable
+                    onPress={() => completeActionStep(step.noteId, step.blockId, step.itemId)}
+                    hitSlop={6}
+                    style={styles.actionCheckbox}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: false }}
+                    accessibilityLabel={`Mark done: ${step.text}`}
+                  />
+                  <Pressable
+                    style={{ flex: 1 }}
+                    onPress={() => router.push(`/note/${step.noteId}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open note ${step.noteTitle}`}
+                  >
+                    <Text style={styles.actionText}>{step.text}</Text>
+                    <Text style={styles.actionMeta} numberOfLines={1}>
+                      {step.noteTitle}
+                    </Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {pinned.length > 0 ? (
+          <View style={{ marginTop: spacing.xxl - 4 }}>
+            <View style={styles.sectionHeader}>
+              <Text style={textStyles.label}>Pinned</Text>
+              <View style={styles.sectionRule} />
+            </View>
+            <View style={{ gap: 12, marginTop: spacing.md }}>
+              {pinned.map((n) => (
+                <NoteCard key={n.id} note={n} onPress={() => router.push(`/note/${n.id}`)} />
+              ))}
+            </View>
+          </View>
+        ) : null}
+        {latest || notes.length === 0 ? (
         <View style={{ marginTop: spacing.xxl - 4 }}>
           <View style={styles.sectionHeader}>
             <Text style={textStyles.label}>This week</Text>
@@ -168,6 +271,7 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+        ) : null}
 
         <View style={styles.tileRow}>
           <PressableScale
@@ -191,6 +295,30 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.tileTitle}>All notes</Text>
             <Text style={styles.tileSubtitle}>{notes.length} saved</Text>
+          </PressableScale>
+        </View>
+        <View style={styles.tileRow}>
+          <PressableScale
+            style={styles.tile}
+            onPress={() => router.push("/devotionals")}
+            accessibilityRole="button"
+          >
+            <View style={styles.tileIcon}>
+              <CompassIcon size={20} color={colors.navy} />
+            </View>
+            <Text style={styles.tileTitle}>Devotionals</Text>
+            <Text style={styles.tileSubtitle}>Topical studies &amp; prayer</Text>
+          </PressableScale>
+          <PressableScale
+            style={styles.tile}
+            onPress={() => router.push("/note/new?template=soap")}
+            accessibilityRole="button"
+          >
+            <View style={styles.tileIcon}>
+              <ChecklistIcon size={20} color={colors.navy} />
+            </View>
+            <Text style={styles.tileTitle}>SOAP journal</Text>
+            <Text style={styles.tileSubtitle}>Daily quiet time</Text>
           </PressableScale>
         </View>
       </ScrollView>
@@ -336,6 +464,54 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
     },
     tileTitle: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
     tileSubtitle: { fontFamily: fontFamily.sansMedium, fontSize: 11.5, color: colors.textMuted },
+    devotionalCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      padding: 16,
+      ...shadows.sm,
+    },
+    devotionalLabel: {
+      fontFamily: fontFamily.sansExtraBold,
+      fontSize: 10,
+      letterSpacing: 0.9,
+      textTransform: "uppercase",
+      color: colors.gold,
+    },
+    devotionalTitle: { fontFamily: fontFamily.serifSemibold, fontSize: 16, color: colors.textPrimary, marginTop: 1 },
+    devotionalSummary: { fontFamily: fontFamily.sansRegular, fontSize: 12, color: colors.textMuted, marginTop: 1 },
+    actionCard: {
+      marginTop: spacing.md,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      ...shadows.sm,
+    },
+    actionRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    actionCheckbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: colors.border,
+      marginTop: 1,
+    },
+    actionText: { fontFamily: fontFamily.sansMedium, fontSize: 14, lineHeight: 20, color: colors.textPrimary },
+    actionMeta: { fontFamily: fontFamily.sansRegular, fontSize: 11.5, color: colors.textMuted, marginTop: 2 },
     pickerScrim: { flex: 1, backgroundColor: colors.scrim },
     pickerSheet: {
       backgroundColor: colors.card,

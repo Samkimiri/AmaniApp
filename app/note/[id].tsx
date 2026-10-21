@@ -23,6 +23,8 @@ import { useColors } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius } from "@/theme/tokens";
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
   CameraIcon,
   ChecklistIcon,
   ChevronDownIcon,
@@ -34,6 +36,8 @@ import {
   ImagePlaceholderIcon,
   MicIcon,
   OpenBookIcon,
+  PinIcon,
+  QuoteIcon,
   RedoIcon,
   ShareArrowIcon,
   StopIcon,
@@ -49,13 +53,13 @@ import { SwipeToDelete } from "@/components/SwipeToDelete";
 import { AudioBlockRow } from "@/components/AudioBlockRow";
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "@/lib/speechRecognition";
 import { ShareSheet } from "@/components/ShareSheet";
-import { getVerseCandidates, useActiveTranslation, VerseResult } from "@/data/bible";
+import { getVerse, getVerseCandidates, useActiveTranslation, VerseResult } from "@/data/bible";
 import { notesStore, deleteBlockMedia } from "@/data/notesStore";
 import { persistRecording, resolvePlayableUri, resolvePlayableUriAsDataUrl } from "@/data/audioStorage";
 import { persistImage } from "@/data/imageStorage";
 import { formatDuration, NoteBlock, newId, SermonNote } from "@/types/note";
 import { getNoteTemplate } from "@/data/noteTemplates";
-import { extractNoteReferences, ScriptureRef } from "@/lib/scriptureRefs";
+import { extractNoteReferences, extractReferences, ScriptureRef } from "@/lib/scriptureRefs";
 import { useAlert } from "@/context/AlertContext";
 import { useHint } from "@/hooks/useHint";
 import { HintBanner } from "@/components/HintBanner";
@@ -82,7 +86,13 @@ function emptyNote(id: string, templateId?: string): SermonNote {
 }
 
 export default function NoteEditorScreen() {
-  const { id, template } = useLocalSearchParams<{ id: string; template?: string }>();
+  const { id, template, initialTitle, initialSeries, initialVerse } = useLocalSearchParams<{
+    id: string;
+    template?: string;
+    initialTitle?: string;
+    initialSeries?: string;
+    initialVerse?: string;
+  }>();
   const isNew = id === "new";
   const translationCode = useActiveTranslation();
   const colors = useColors();
@@ -100,11 +110,31 @@ export default function NoteEditorScreen() {
   // actually arrives, apply it for real — this only matters for a note
   // that's still brand new and untouched, so it can't clobber typing.
   useEffect(() => {
-    if (isNew && template) {
-      setNote((n) => ({ ...n, blocks: getNoteTemplate(template).buildBlocks() }));
-    }
+    if (!isNew) return;
+    setNote((n) => {
+      let blocks = template ? getNoteTemplate(template).buildBlocks() : n.blocks;
+      if (initialVerse) {
+        const refs = extractReferences(initialVerse);
+        if (refs.length > 0) {
+          const r = refs[0];
+          const text = getVerse(r.book, r.chapter, r.verse);
+          if (text) {
+            blocks = [
+              { id: newId(), type: "verse", reference: r.label, text },
+              ...blocks,
+            ];
+          }
+        }
+      }
+      return {
+        ...n,
+        title: initialTitle || n.title,
+        series: initialSeries || n.series,
+        blocks,
+      };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template]);
+  }, [template, initialTitle, initialSeries, initialVerse]);
   const [loaded, setLoaded] = useState(isNew);
   const [saveState, setSaveState] = useState<"saved" | "saving">("saved");
   const [verseBarOpen, setVerseBarOpen] = useState(false);
@@ -609,12 +639,131 @@ export default function NoteEditorScreen() {
     appendBlock({ id: newId(), type: "heading", text: "" });
   }
 
+  function addQuote() {
+    appendBlock({ id: newId(), type: "quote", text: "" });
+  }
+
   function updateHeadingBlock(blockId: string, text: string) {
     setNote((n) => ({
       ...n,
       blocks: n.blocks.map((b) => (b.id === blockId && b.type === "heading" ? { ...b, text } : b)),
     }));
   }
+
+  function updateQuoteBlock(blockId: string, text: string) {
+    setNote((n) => ({
+      ...n,
+      blocks: n.blocks.map((b) => (b.id === blockId && b.type === "quote" ? { ...b, text } : b)),
+    }));
+  }
+
+  function moveBlock(blockId: string, direction: -1 | 1) {
+    setNote((n) => {
+      const idx = n.blocks.findIndex((b) => b.id === blockId);
+      const target = idx + direction;
+      if (idx < 0 || target < 0 || target >= n.blocks.length) return n;
+      const blocks = [...n.blocks];
+      const [moved] = blocks.splice(idx, 1);
+      blocks.splice(target, 0, moved);
+      return { ...n, blocks };
+    });
+  }
+
+  // Detect "/" slash command at the end of a line in the currently focused text block
+  const activeSlashState = useMemo(() => {
+    if (!focusedBlockId) return null;
+    const block = note.blocks.find((b) => b.id === focusedBlockId);
+    if (!block || block.type !== "text") return null;
+    const match = block.text.match(/(?:^|\n)\/([a-zA-Z]*)$/);
+    if (!match) return null;
+    return { blockId: block.id, query: match[1].toLowerCase() };
+  }, [focusedBlockId, note.blocks]);
+
+  const slashCommands = useMemo(() => {
+    if (!activeSlashState) return [];
+    const all = [
+      { id: "verse", cmd: "/verse", label: "Bible Verse", desc: "Insert a Scripture callout" },
+      { id: "heading", cmd: "/heading", label: "Section Heading", desc: "Add an uppercase subheading" },
+      { id: "todo", cmd: "/todo", label: "Action Checklist", desc: "Add response & action steps" },
+      { id: "quote", cmd: "/quote", label: "Key Takeaway / Quote", desc: "Highlight a memorable quote" },
+      { id: "soap", cmd: "/soap", label: "SOAP Sections", desc: "Scripture, Observation, Application, Prayer" },
+    ];
+    if (!activeSlashState.query) return all;
+    return all.filter(
+      (c) => c.id.startsWith(activeSlashState.query) || c.label.toLowerCase().includes(activeSlashState.query)
+    );
+  }, [activeSlashState]);
+
+  function runSlashCommand(commandId: string) {
+    if (!activeSlashState) return;
+    const { blockId } = activeSlashState;
+    setNote((n) => {
+      const idx = n.blocks.findIndex((b) => b.id === blockId);
+      if (idx < 0) return n;
+      const current = n.blocks[idx];
+      if (current.type !== "text") return n;
+      const cleanedText = current.text.replace(/(?:^|\n)\/[a-zA-Z]*$/, "");
+      const blocks = [...n.blocks];
+      const newBlocks: NoteBlock[] = [];
+      if (commandId === "heading") {
+        newBlocks.push({ id: newId(), type: "heading", text: "" });
+      } else if (commandId === "todo") {
+        newBlocks.push({ id: newId(), type: "checklist", items: [{ id: newId(), text: "", done: false }] });
+      } else if (commandId === "quote") {
+        newBlocks.push({ id: newId(), type: "quote", text: "" });
+      } else if (commandId === "soap") {
+        newBlocks.push(
+          { id: newId(), type: "heading", text: "Scripture" },
+          { id: newId(), type: "text", text: "" },
+          { id: newId(), type: "heading", text: "Observation" },
+          { id: newId(), type: "text", text: "" },
+          { id: newId(), type: "heading", text: "Application" },
+          { id: newId(), type: "text", text: "" },
+          { id: newId(), type: "heading", text: "Prayer" },
+          { id: newId(), type: "text", text: "" }
+        );
+      }
+
+      if (cleanedText.trim()) {
+        blocks[idx] = { ...current, text: cleanedText };
+        if (newBlocks.length > 0) {
+          blocks.splice(idx + 1, 0, ...newBlocks, { id: newId(), type: "text", text: "" });
+        }
+      } else if (newBlocks.length > 0) {
+        blocks.splice(idx, 1, ...newBlocks, { id: newId(), type: "text", text: "" });
+      } else {
+        blocks[idx] = { ...current, text: "" };
+      }
+      return { ...n, blocks };
+    });
+    if (commandId === "verse") {
+      setVerseBarOpen(true);
+    }
+  }
+
+  // Inline Scripture Auto-Detection: if the currently focused text block mentions
+  // a Bible reference (e.g. "John 3:16") that isn't already a VerseBlock in this note,
+  // offer a 1-tap pill to insert the full verse callout card right below.
+  const inlineVerseCandidate = useMemo<VerseResult | null>(() => {
+    if (!focusedBlockId) return null;
+    const block = note.blocks.find((b) => b.id === focusedBlockId);
+    if (!block || block.type !== "text" || !block.text.trim()) return null;
+    const refs = extractReferences(block.text);
+    if (refs.length === 0) return null;
+    const existingRefs = new Set(
+      note.blocks.filter((b): b is Extract<NoteBlock, { type: "verse" }> => b.type === "verse").map((b) => b.reference)
+    );
+    for (let i = refs.length - 1; i >= 0; i--) {
+      const r = refs[i];
+      const text = getVerse(r.book, r.chapter, r.verse);
+      const canonicalRef = `${r.book} ${r.chapter}:${r.verse}`;
+      if (text && !existingRefs.has(canonicalRef) && !existingRefs.has(r.label)) {
+        return { book: r.book, chapter: r.chapter, verse: r.verse, reference: canonicalRef, text };
+      }
+    }
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedBlockId, note.blocks, translationCode]);
 
   function updateVerseColor(blockId: string, color: string) {
     setNote((n) => ({
@@ -1058,6 +1207,15 @@ export default function NoteEditorScreen() {
               </Pressable>
               <Pressable
                 style={styles.toolbarButton}
+                onPress={addQuote}
+                accessibilityRole="button"
+                accessibilityLabel="Add a key takeaway or quote"
+              >
+                <QuoteIcon size={17} />
+                <Text style={styles.toolbarButtonLabel}>Quote</Text>
+              </Pressable>
+              <Pressable
+                style={styles.toolbarButton}
                 onPress={addChecklist}
                 accessibilityRole="button"
                 accessibilityLabel="Add a response checklist"
@@ -1223,6 +1381,15 @@ export default function NoteEditorScreen() {
             </View>
             <View style={styles.headerActions}>
               <Pressable
+                onPress={() => setNote((n) => ({ ...n, pinned: !n.pinned }))}
+                style={styles.headerButton}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={note.pinned ? "Unpin note" : "Pin note to top"}
+              >
+                <PinIcon size={18} color={note.pinned ? colors.gold : colors.textSecondary} filled={!!note.pinned} />
+              </Pressable>
+              <Pressable
                 onPress={confirmDeleteNote}
                 style={styles.headerButton}
                 hitSlop={8}
@@ -1264,15 +1431,27 @@ export default function NoteEditorScreen() {
             multiline
             scrollEnabled={false}
           />
-          <TextInput
-            value={note.preacher ?? ""}
-            onChangeText={(preacher) => setNote((n) => ({ ...n, preacher }))}
-            onFocus={handleTypingFocus}
-            onBlur={handleTypingBlur}
-            placeholder="Add preacher"
-            placeholderTextColor={colors.textFaint}
-            style={styles.preacherInput}
-          />
+          <View style={styles.metaFieldsRow}>
+            <TextInput
+              value={note.preacher ?? ""}
+              onChangeText={(preacher) => setNote((n) => ({ ...n, preacher }))}
+              onFocus={handleTypingFocus}
+              onBlur={handleTypingBlur}
+              placeholder="Add preacher"
+              placeholderTextColor={colors.textFaint}
+              style={styles.preacherInput}
+            />
+            <Text style={styles.metaFieldDot}>&middot;</Text>
+            <TextInput
+              value={note.series ?? ""}
+              onChangeText={(series) => setNote((n) => ({ ...n, series }))}
+              onFocus={handleTypingFocus}
+              onBlur={handleTypingBlur}
+              placeholder="Add sermon series"
+              placeholderTextColor={colors.textFaint}
+              style={styles.preacherInput}
+            />
+          </View>
           {note.tags && note.tags.length > 0 ? (
             <View style={styles.tagChipRow}>
               {note.tags.map((tag) => (
@@ -1315,10 +1494,40 @@ export default function NoteEditorScreen() {
             </View>
           ) : null}
 
-          {(note.blocks ?? []).map((block) => {
+          {(note.blocks ?? []).map((block, blockIndex) => {
             // Defensive: skip any block that's null/undefined or has no type
             // (possible with hand-edited backup files or very old data).
             if (!block || !block.type) return null;
+            const canMoveUp = blockIndex > 0;
+            const canMoveDown = blockIndex < (note.blocks?.length ?? 0) - 1;
+            const reorderControls =
+              (note.blocks?.length ?? 0) > 1 ? (
+                <View style={styles.reorderGroup}>
+                  {canMoveUp ? (
+                    <Pressable
+                      onPress={() => moveBlock(block.id, -1)}
+                      hitSlop={6}
+                      style={styles.reorderButton}
+                      accessibilityRole="button"
+                      accessibilityLabel="Move block up"
+                    >
+                      <ArrowUpIcon size={12} color={colors.textFaint} />
+                    </Pressable>
+                  ) : null}
+                  {canMoveDown ? (
+                    <Pressable
+                      onPress={() => moveBlock(block.id, 1)}
+                      hitSlop={6}
+                      style={styles.reorderButton}
+                      accessibilityRole="button"
+                      accessibilityLabel="Move block down"
+                    >
+                      <ArrowDownIcon size={12} color={colors.textFaint} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null;
+
             if (block.type === "text") {
               // An empty block has nothing to render as a preview and needs
               // to be an obvious place to tap and start typing, so it's
@@ -1360,7 +1569,7 @@ export default function NoteEditorScreen() {
                       : undefined
                   }
                   onContentSizeChange={autoGrow(block.id, 26)}
-                  placeholder="Start typing your notes…"
+                  placeholder="Start typing your notes… (type / for commands)"
                   placeholderTextColor={colors.textFaint}
                   style={[styles.bodyInput, openFieldStyle, { minHeight: blockHeights[block.id] ?? 26 }]}
                   multiline
@@ -1387,6 +1596,7 @@ export default function NoteEditorScreen() {
                     multiline
                     scrollEnabled={false}
                   />
+                  {reorderControls}
                   <Pressable
                     onPress={() => removeBlock(block.id)}
                     hitSlop={8}
@@ -1397,6 +1607,42 @@ export default function NoteEditorScreen() {
                     <TrashIcon size={14} color={colors.textFaint} />
                   </Pressable>
                 </View>
+              );
+            }
+            if (block.type === "quote") {
+              return (
+                <SwipeToDelete key={block.id} onDelete={() => removeBlock(block.id)}>
+                  <View style={styles.quoteBlock}>
+                    <TextInput
+                      value={block.text}
+                      onChangeText={(text) => updateQuoteBlock(block.id, text)}
+                      onFocus={handleTypingFocus}
+                      onBlur={handleTypingBlur}
+                      onContentSizeChange={autoGrow(block.id, 26)}
+                      placeholder="Key takeaway or memorable quote…"
+                      placeholderTextColor={colors.textFaint}
+                      style={[
+                        styles.quoteInput,
+                        openFieldStyle,
+                        { minHeight: blockHeights[block.id] ?? 26, flex: 1 },
+                      ]}
+                      multiline
+                      scrollEnabled={false}
+                    />
+                    <View style={styles.quoteActions}>
+                      {reorderControls}
+                      <Pressable
+                        onPress={() => removeBlock(block.id)}
+                        hitSlop={8}
+                        style={styles.headingRemoveButton}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove quote"
+                      >
+                        <CloseIcon size={12} color={colors.textFaint} />
+                      </Pressable>
+                    </View>
+                  </View>
+                </SwipeToDelete>
               );
             }
             if (block.type === "verse") {
@@ -1416,6 +1662,7 @@ export default function NoteEditorScreen() {
                         selected={block.color ?? "gold"}
                         onSelect={(color) => updateVerseColor(block.id, color)}
                       />
+                      {reorderControls}
                     </View>
                   ) : null}
                 </SwipeToDelete>
@@ -1525,6 +1772,43 @@ export default function NoteEditorScreen() {
                 {liveCaption}
               </Text>
             ) : null}
+          </View>
+        ) : null}
+
+        {inlineVerseCandidate && !activeSlashState && !verseBarOpen ? (
+          <View style={styles.inlineDetectBar}>
+            <OpenBookIcon size={14} color={colors.verseText} />
+            <Text style={styles.inlineDetectText} numberOfLines={1}>
+              {inlineVerseCandidate.reference} — &ldquo;{inlineVerseCandidate.text}&rdquo;
+            </Text>
+            <Pressable
+              style={styles.inlineDetectButton}
+              onPress={() => insertVerse(inlineVerseCandidate)}
+              accessibilityRole="button"
+              accessibilityLabel={`Insert ${inlineVerseCandidate.reference} verse card`}
+            >
+              <Text style={styles.inlineDetectButtonText}>+ Insert card</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {activeSlashState && slashCommands.length > 0 ? (
+          <View style={styles.slashBar}>
+            <Text style={styles.slashHeader}>Quick insert</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slashChipRow}>
+              {slashCommands.map((c) => (
+                <Pressable
+                  key={c.id}
+                  style={styles.slashChip}
+                  onPress={() => runSlashCommand(c.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${c.label}: ${c.desc}`}
+                >
+                  <Text style={styles.slashChipCmd}>{c.cmd}</Text>
+                  <Text style={styles.slashChipLabel}>{c.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
         ) : null}
 
@@ -1687,12 +1971,24 @@ function makeStyles(colors: ColorPalette) {
     alignSelf: "center",
   },
   titleInput: { fontFamily: fontFamily.serifBold, fontSize: 22, lineHeight: 29, color: colors.textPrimary, padding: 0 },
+  metaFieldsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: -8,
+  },
+  metaFieldDot: {
+    fontFamily: fontFamily.sansBold,
+    fontSize: 13,
+    color: colors.textFaint,
+  },
   preacherInput: {
     fontFamily: fontFamily.sansMedium,
     fontSize: 13,
     color: colors.textSecondary,
     padding: 0,
-    marginTop: -8,
+    minWidth: 110,
   },
   tagChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   scriptureRow: { gap: 8 },
@@ -1736,6 +2032,104 @@ function makeStyles(colors: ColorPalette) {
     padding: 0,
   },
   headingRemoveButton: { width: 22, height: 22, alignItems: "center", justifyContent: "center" },
+  reorderGroup: { flexDirection: "row", alignItems: "center", gap: 2 },
+  reorderButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceMuted,
+  },
+  quoteBlock: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.navy,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  quoteInput: {
+    fontFamily: fontFamily.serifItalic,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.textPrimary,
+    padding: 0,
+  },
+  quoteActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  inlineDetectBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.verseBg,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  inlineDetectText: {
+    flex: 1,
+    fontFamily: fontFamily.sansMedium,
+    fontSize: 12,
+    color: colors.verseText,
+  },
+  inlineDetectButton: {
+    backgroundColor: colors.navy,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  inlineDetectButtonText: {
+    fontFamily: fontFamily.sansBold,
+    fontSize: 11.5,
+    color: colors.white,
+  },
+  slashBar: {
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  slashHeader: {
+    fontFamily: fontFamily.sansExtraBold,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: colors.textMuted,
+  },
+  slashChipRow: {
+    gap: 8,
+  },
+  slashChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  slashChipCmd: {
+    fontFamily: fontFamily.sansExtraBold,
+    fontSize: 11.5,
+    color: colors.gold,
+  },
+  slashChipLabel: {
+    fontFamily: fontFamily.sansBold,
+    fontSize: 12,
+    color: colors.textPrimary,
+  },
   checklistBlock: {
     backgroundColor: colors.card,
     borderWidth: 1,

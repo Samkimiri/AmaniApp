@@ -57,6 +57,7 @@ export function normalizeBlock(block: any): NoteBlock | null {
   switch (block.type) {
     case "text":
     case "heading":
+    case "quote":
       return { id, type: block.type, text: typeof block.text === "string" ? block.text : "" };
     case "verse":
       return {
@@ -117,6 +118,8 @@ export function normalizeNote(note: any): SermonNote {
     title: typeof note?.title === "string" ? note.title : "",
     church: typeof note?.church === "string" ? note.church : "",
     preacher: typeof note?.preacher === "string" ? note.preacher : "",
+    ...(typeof note?.series === "string" && note.series ? { series: note.series } : {}),
+    ...(note?.pinned === true ? { pinned: true } : {}),
     tags: Array.isArray(note?.tags)
       ? note.tags.filter((t: unknown): t is string => typeof t === "string")
       : [],

@@ -4,7 +4,7 @@ import { ColorPalette } from "@/theme/colors";
 import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius, Shadows, spacing } from "@/theme/tokens";
-import { OpenBookIcon, WaveformIcon } from "./icons";
+import { OpenBookIcon, PinIcon, WaveformIcon } from "./icons";
 import { PressableScale } from "./Motion";
 import { firstAudioBlock, firstVerseBlock, formatDuration, SermonNote } from "@/types/note";
 
@@ -23,7 +23,8 @@ export const NoteCard = React.memo(function NoteCard({
   const verse = firstVerseBlock(note);
   const audio = firstAudioBlock(note);
   const previewBlock = (note.blocks ?? []).find(
-    (b): b is Extract<typeof b, { type: "text" }> => b && b.type === "text" && (b.text?.trim()?.length ?? 0) > 0
+    (b): b is Extract<typeof b, { type: "text" | "quote" }> =>
+      !!b && (b.type === "text" || b.type === "quote") && (b.text?.trim()?.length ?? 0) > 0
   );
   const preview = previewBlock?.text;
 
@@ -32,12 +33,20 @@ export const NoteCard = React.memo(function NoteCard({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={400}
-      style={styles.card}
+      style={[styles.card, note.pinned && styles.cardPinned]}
       accessibilityRole="button"
     >
-      <Text style={styles.meta}>
-        {[note.church, note.preacher].filter(Boolean).join(" · ") || "Personal note"}
-      </Text>
+      <View style={styles.metaRow}>
+        <Text style={styles.meta} numberOfLines={1}>
+          {[note.church, note.series, note.preacher].filter(Boolean).join(" · ") || "Personal note"}
+        </Text>
+        {note.pinned ? (
+          <View style={styles.pinBadge}>
+            <PinIcon size={11} color={colors.gold} filled />
+            <Text style={styles.pinBadgeText}>Pinned</Text>
+          </View>
+        ) : null}
+      </View>
       <Text style={styles.title} numberOfLines={1}>
         {note.title || "Untitled note"}
       </Text>
@@ -78,12 +87,38 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
       gap: spacing.sm,
       ...shadows.sm,
     },
+    cardPinned: {
+      borderColor: colors.goldLight,
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+    },
     meta: {
+      flex: 1,
       fontFamily: fontFamily.sansBold,
       fontSize: 10.5,
       letterSpacing: 0.8,
       textTransform: "uppercase",
       color: colors.textFaint,
+    },
+    pinBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: colors.verseBg,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: radius.pill,
+    },
+    pinBadgeText: {
+      fontFamily: fontFamily.sansBold,
+      fontSize: 10,
+      color: colors.verseText,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
     },
     title: {
       fontFamily: fontFamily.serifSemibold,

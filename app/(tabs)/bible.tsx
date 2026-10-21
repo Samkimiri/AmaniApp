@@ -24,6 +24,7 @@ import { ColorSwatchRow } from "@/components/ColorSwatchRow";
 import { BibleBrowser, ContinueReadingCard } from "@/components/BibleBrowser";
 import { PlansCard } from "@/components/PlansCard";
 import { MemorizeCard } from "@/components/MemorizeCard";
+import { DevotionalsCard } from "@/components/DevotionalsCard";
 import { TranslationPicker } from "@/components/TranslationPicker";
 import { getHighlightColor } from "@/theme/highlightColors";
 
@@ -211,6 +212,7 @@ export default function BibleScreen() {
             <ContinueReadingCard />
             <PlansCard />
             <MemorizeCard />
+            <DevotionalsCard />
             <BibleBrowser />
 
             <Text style={[textStyles.label, { marginTop: 32, marginBottom: 14 }]}>Verse lookup</Text>

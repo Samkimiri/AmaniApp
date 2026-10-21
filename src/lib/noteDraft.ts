@@ -16,12 +16,14 @@ export function isBlankNote(note: SermonNote): boolean {
     !note.title?.trim() &&
     !note.church?.trim() &&
     !note.preacher?.trim() &&
+    !note.series?.trim() &&
     !(note.tags && note.tags.length > 0) &&
     (note.blocks ?? []).every(
       (b) =>
         !b ||
         b.type === "heading" ||
         (b.type === "text" && !b.text?.trim()) ||
+        (b.type === "quote" && !b.text?.trim()) ||
         (b.type === "checklist" && (b.items ?? []).every((i) => !i?.text?.trim()))
     )
   );

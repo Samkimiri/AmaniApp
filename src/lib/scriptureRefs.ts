@@ -54,7 +54,9 @@ export function extractReferences(text: string): ScriptureRef[] {
 export function extractNoteReferences(note: SermonNote): ScriptureRef[] {
   const text = [
     note.title,
-    ...note.blocks.map((b) => (b.type === "text" || b.type === "heading" ? b.text : "")),
+    ...note.blocks.map((b) =>
+      b.type === "text" || b.type === "heading" || b.type === "quote" ? b.text : ""
+    ),
   ].join("\n");
   return extractReferences(text);
 }

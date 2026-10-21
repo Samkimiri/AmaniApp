@@ -11,6 +11,9 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronDownIcon,
+  CloseIcon,
+  NotesIcon,
+  PlusIcon,
   SpeakerIcon,
   StopIcon,
 } from "@/components/icons";
@@ -26,6 +29,9 @@ import {
 import { getReadingPosition, saveReadingPosition } from "@/data/readingProgress";
 import { markChapterRead } from "@/data/readingStats";
 import { bookmarks, highlights } from "@/data/verseMarks";
+import { notesStore } from "@/data/notesStore";
+import { extractNoteReferences, extractReferences } from "@/lib/scriptureRefs";
+import { SermonNote } from "@/types/note";
 import {
   LINE_SPACING_RATIO,
   ReaderLayout,
@@ -107,6 +113,11 @@ export default function BibleReadScreen() {
   const [speaking, setSpeaking] = useState(false);
   const [highlightMap, setHighlightMap] = useState<Record<string, string | undefined>>({});
   const [bookmarkSet, setBookmarkSet] = useState<Set<string>>(new Set());
+  const [allNotes, setAllNotes] = useState<SermonNote[]>([]);
+  const [notesModalVerse, setNotesModalVerse] = useState<{
+    verse: number;
+    notes: { id: string; title: string; date: string; preacher?: string }[];
+  } | null>(null);
   const translationCode = useActiveTranslation();
   const colors = useColors();
   // Re-renders on every verse tap, highlight/bookmark change, and scroll
@@ -117,8 +128,45 @@ export default function BibleReadScreen() {
   const refreshMarks = useCallback(() => {
     highlights.getAll().then((list) => setHighlightMap(Object.fromEntries(list.map((m) => [m.reference, m.color]))));
     bookmarks.getAll().then((list) => setBookmarkSet(new Set(list.map((m) => m.reference))));
+    notesStore.getAll().then((list) => setAllNotes(list));
   }, []);
   useEffect(refreshMarks, [refreshMarks]);
+
+  // Bi-directional link: index which verses in the current chapter are
+  // cited across all sermon notes and devotional reflections on this device.
+  const chapterVerseNotes = useMemo(() => {
+    const map: Record<number, { id: string; title: string; date: string; preacher?: string }[]> = {};
+    for (const n of allNotes) {
+      const noteEntry = { id: n.id, title: n.title || "Untitled note", date: n.date, preacher: n.preacher };
+      // 1. Verse blocks
+      for (const b of n.blocks ?? []) {
+        if (b && b.type === "verse" && b.reference) {
+          const refs = extractReferences(b.reference);
+          for (const r of refs) {
+            if (r.book.toLowerCase() === book.toLowerCase() && r.chapter === chapter) {
+              const end = r.endVerse ?? r.verse;
+              for (let v = r.verse; v <= end; v++) {
+                if (!map[v]) map[v] = [];
+                if (!map[v].some((existing) => existing.id === n.id)) map[v].push(noteEntry);
+              }
+            }
+          }
+        }
+      }
+      // 2. Free text references
+      const refs = extractNoteReferences(n);
+      for (const r of refs) {
+        if (r.book.toLowerCase() === book.toLowerCase() && r.chapter === chapter) {
+          const end = r.endVerse ?? r.verse;
+          for (let v = r.verse; v <= end; v++) {
+            if (!map[v]) map[v] = [];
+            if (!map[v].some((existing) => existing.id === n.id)) map[v].push(noteEntry);
+          }
+        }
+      }
+    }
+    return map;
+  }, [allNotes, book, chapter]);
 
   function chooseLayout(next: ReaderLayout) {
     updateReaderSettings({ layout: next });
@@ -225,6 +273,12 @@ export default function BibleReadScreen() {
     setFocus(null);
     setBook(nextBook);
     setChapter(nextChapter);
+  }
+
+  function startNoteOnVerse(verseNumber: number) {
+    setNotesModalVerse(null);
+    const ref = formatReference(book, chapter, verseNumber);
+    router.push(`/note/new?initialVerse=${encodeURIComponent(ref)}`);
   }
 
   function openVerse(verse: number, text: string) {
@@ -378,6 +432,7 @@ export default function BibleReadScreen() {
               const isNote = v.text.startsWith("[");
               const mark = verseMark(v.verse);
               const hl = mark.hasHighlight ? getHighlightColor(mark.color) : null;
+              const verseNotes = chapterVerseNotes[v.verse] ?? [];
               return (
                 <Pressable
                   key={v.verse}
@@ -397,6 +452,21 @@ export default function BibleReadScreen() {
                     {mark.bookmarked ? <BookmarkIcon size={11} color={colors.gold} /> : null}
                   </View>
                   <Text style={[styles.verseBody, isNote && styles.verseNote, hl && { color: hl.text }]}>{v.text}</Text>
+                  {verseNotes.length > 0 ? (
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        setNotesModalVerse({ verse: v.verse, notes: verseNotes });
+                      }}
+                      style={styles.verseNoteBadge}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${verseNotes.length} note${verseNotes.length === 1 ? "" : "s"} referencing verse ${v.verse}`}
+                    >
+                      <NotesIcon size={11} color={colors.navy} />
+                      <Text style={styles.verseNoteBadgeText}>{verseNotes.length}</Text>
+                    </Pressable>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -413,6 +483,7 @@ export default function BibleReadScreen() {
               const isNote = v.text.startsWith("[");
               const mark = verseMark(v.verse);
               const hl = mark.hasHighlight ? getHighlightColor(mark.color) : null;
+              const verseNotes = chapterVerseNotes[v.verse] ?? [];
               return (
                 <Text
                   key={v.verse}
@@ -423,7 +494,11 @@ export default function BibleReadScreen() {
                     isFocused(v.verse) && styles.paragraphFocused,
                   ]}
                 >
-                  <Text style={styles.verseNumber}>{v.verse}{mark.bookmarked ? "★" : ""} </Text>
+                  <Text style={styles.verseNumber}>
+                    {v.verse}
+                    {mark.bookmarked ? "★" : ""}
+                    {verseNotes.length > 0 ? " 📝" : ""}{" "}
+                  </Text>
                   <Text>{v.text} </Text>
                 </Text>
               );
@@ -458,6 +533,73 @@ export default function BibleReadScreen() {
       <TranslationPicker visible={versionPickerOpen} onClose={() => setVersionPickerOpen(false)} />
       <ReaderSettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <VerseActionSheet verse={actionVerse} onClose={() => setActionVerse(null)} onChanged={refreshMarks} />
+
+      <Modal
+        visible={notesModalVerse !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setNotesModalVerse(null)}
+      >
+        <Pressable style={styles.pickerScrim} onPress={() => setNotesModalVerse(null)} />
+        <View style={styles.pickerSheet}>
+          <View style={styles.modalGrabber} />
+          <View style={styles.modalHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pickerTitle}>
+                {book} {chapter}:{notesModalVerse?.verse}
+              </Text>
+              <Text style={styles.modalSubtitle}>
+                {notesModalVerse?.notes.length} note{notesModalVerse?.notes.length === 1 ? "" : "s"} reference this verse
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setNotesModalVerse(null)}
+              hitSlop={8}
+              style={styles.modalCloseButton}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
+              <CloseIcon size={14} color={colors.textFaint} />
+            </Pressable>
+          </View>
+          <ScrollView style={styles.modalNoteList} showsVerticalScrollIndicator={false}>
+            {(notesModalVerse?.notes ?? []).map((n) => (
+              <Pressable
+                key={n.id}
+                style={({ pressed }) => [styles.modalNoteRow, pressed && { opacity: 0.75 }]}
+                onPress={() => {
+                  setNotesModalVerse(null);
+                  router.push(`/note/${n.id}`);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Open note ${n.title}`}
+              >
+                <View style={styles.modalNoteIcon}>
+                  <NotesIcon size={16} color={colors.navy} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalNoteTitle}>{n.title}</Text>
+                  <Text style={styles.modalNoteMeta}>
+                    {[n.preacher, n.date].filter(Boolean).join(" · ")}
+                  </Text>
+                </View>
+                <ChevronRightIcon size={16} color={colors.textFaint} />
+              </Pressable>
+            ))}
+          </ScrollView>
+          {notesModalVerse ? (
+            <Pressable
+              style={styles.modalNewNoteButton}
+              onPress={() => startNoteOnVerse(notesModalVerse.verse)}
+              accessibilityRole="button"
+              accessibilityLabel="Start a new note on this verse"
+            >
+              <PlusIcon size={14} color={colors.white} />
+              <Text style={styles.modalNewNoteButtonText}>New note on this verse</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </Modal>
 
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.pickerScrim} onPress={() => setPickerOpen(false)} />
@@ -631,5 +773,95 @@ function makeStyles(colors: ColorPalette, settings: ReaderSettings) {
       justifyContent: "center",
     },
     chapterCellText: { fontFamily: fontFamily.sansBold, fontSize: 13.5, color: colors.textPrimary },
+    verseNoteBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      backgroundColor: colors.verseBg,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 999,
+      marginLeft: 6,
+      alignSelf: "flex-start",
+    },
+    verseNoteBadgeText: {
+      fontFamily: fontFamily.sansBold,
+      fontSize: 10,
+      color: colors.navy,
+    },
+    modalGrabber: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.borderLight,
+      alignSelf: "center",
+      marginBottom: 12,
+    },
+    modalHeaderRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    modalSubtitle: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    modalCloseButton: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.surfaceMuted,
+    },
+    modalNoteList: {
+      maxHeight: 280,
+      marginTop: 10,
+    },
+    modalNoteRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    modalNoteIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      backgroundColor: colors.verseBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalNoteTitle: {
+      fontFamily: fontFamily.serifSemibold,
+      fontSize: 14.5,
+      color: colors.textPrimary,
+    },
+    modalNoteMeta: {
+      fontFamily: fontFamily.sansRegular,
+      fontSize: 11.5,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    modalNewNoteButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: colors.navy,
+      height: 44,
+      borderRadius: 999,
+      marginTop: 14,
+    },
+    modalNewNoteButtonText: {
+      fontFamily: fontFamily.sansBold,
+      fontSize: 13,
+      color: colors.white,
+    },
   });
 }

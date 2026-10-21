@@ -418,3 +418,53 @@ export function WaveformIcon({ size = 18, color = "#5B6472", strokeWidth = 2 }: 
     </Svg>
   );
 }
+
+export function PinIcon({
+  size = 18,
+  color = "#5B6472",
+  strokeWidth = 1.9,
+  filled = false,
+}: IconProps & { filled?: boolean }) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color} fill={filled ? color : "none"}>
+      <Path d="M8.5 4.5h7l-1 5 2.5 2.5v1.5h-10V12L9.5 9.5l-1-5Z" />
+      <Line x1={12} y1={13.5} x2={12} y2={20} />
+    </Svg>
+  );
+}
+
+export function QuoteIcon({ size = 18, color = "#5B6472", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M9.5 8H6a1.5 1.5 0 0 0-1.5 1.5v3A1.5 1.5 0 0 0 6 14h2a1.5 1.5 0 0 1 1.5 1.5V16a2.5 2.5 0 0 1-2.5 2.5" />
+      <Path d="M19.5 8H16a1.5 1.5 0 0 0-1.5 1.5v3A1.5 1.5 0 0 0 16 14h2a1.5 1.5 0 0 1 1.5 1.5V16a2.5 2.5 0 0 1-2.5 2.5" />
+    </Svg>
+  );
+}
+
+export function ArrowUpIcon({ size = 14, color = "#5B6472", strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M12 19V5" />
+      <Path d="m6.5 10.5 5.5-5.5 5.5 5.5" />
+    </Svg>
+  );
+}
+
+export function ArrowDownIcon({ size = 14, color = "#5B6472", strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Path d="M12 5v14" />
+      <Path d="m6.5 13.5 5.5 5.5 5.5-5.5" />
+    </Svg>
+  );
+}
+
+export function CompassIcon({ size = 20, color = "#1F3A5F", strokeWidth = 1.9 }: IconProps) {
+  return (
+    <Svg {...base(size, strokeWidth)} stroke={color}>
+      <Circle cx={12} cy={12} r={8.5} />
+      <Path d="m14.8 9.2-1.8 4.6-4.6 1.8 1.8-4.6 4.6-1.8Z" />
+    </Svg>
+  );
+}

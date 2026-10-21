@@ -1,6 +1,6 @@
 import { getHighlightColor } from "@/theme/highlightColors";
 
-export type NoteBlockType = "text" | "heading" | "verse" | "image" | "audio" | "checklist";
+export type NoteBlockType = "text" | "heading" | "verse" | "image" | "audio" | "checklist" | "quote";
 
 export interface TextBlock {
   id: string;
@@ -13,6 +13,13 @@ export interface TextBlock {
 export interface HeadingBlock {
   id: string;
   type: "heading";
+  text: string;
+}
+
+/** A highlighted key takeaway or preacher quote callout. */
+export interface QuoteBlock {
+  id: string;
+  type: "quote";
   text: string;
 }
 
@@ -60,7 +67,14 @@ export interface ChecklistBlock {
   items: ChecklistItem[];
 }
 
-export type NoteBlock = TextBlock | HeadingBlock | VerseBlock | ImageBlock | AudioBlock | ChecklistBlock;
+export type NoteBlock =
+  | TextBlock
+  | HeadingBlock
+  | QuoteBlock
+  | VerseBlock
+  | ImageBlock
+  | AudioBlock
+  | ChecklistBlock;
 
 export function firstAudioBlock(note: SermonNote): AudioBlock | undefined {
   return (note.blocks ?? []).find((b): b is AudioBlock => b && b.type === "audio");
@@ -78,6 +92,8 @@ export interface SermonNote {
   title: string;
   church?: string;
   preacher?: string;
+  series?: string;
+  pinned?: boolean;
   tags?: string[];
   /** ISO date string for the service this note belongs to */
   date: string;
@@ -99,7 +115,7 @@ export function firstVerseBlock(note: SermonNote): VerseBlock | undefined {
 export function noteToPlainText(note: SermonNote): string {
   const lines: string[] = [];
   lines.push(note.title || "Untitled note");
-  const meta = [note.church, note.preacher, note.date].filter(Boolean).join(" · ");
+  const meta = [note.church, note.series, note.preacher, note.date].filter(Boolean).join(" · ");
   if (meta) lines.push(meta);
   if (note.tags && note.tags.length > 0) lines.push(note.tags.map((t) => `#${t}`).join(" "));
   lines.push("");
@@ -109,6 +125,8 @@ export function noteToPlainText(note: SermonNote): string {
     } else if (block.type === "heading" && block.text.trim()) {
       lines.push("");
       lines.push(block.text.trim().toUpperCase());
+    } else if (block.type === "quote" && block.text.trim()) {
+      lines.push(`> ${block.text.trim()}`);
     } else if (block.type === "verse") {
       lines.push(`"${block.text}" — ${block.reference}`);
     } else if (block.type === "image") {
@@ -133,7 +151,7 @@ export function noteToPlainText(note: SermonNote): string {
  * render real photos pass them in here. Anything missing falls back to the
  * block's own uri. */
 export function noteToHtml(note: SermonNote, resolvedImages?: Record<string, string>): string {
-  const meta = [note.church, note.preacher, note.date].filter(Boolean).join(" &middot; ");
+  const meta = [note.church, note.series, note.preacher, note.date].filter(Boolean).join(" &middot; ");
   const tagsLine =
     note.tags && note.tags.length > 0
       ? `<div style="margin-top:8px;font-size:14px;color:#8A5A00;">${note.tags.map((t) => `#${escapeHtml(t)}`).join("&nbsp;&nbsp;")}</div>`
@@ -147,6 +165,11 @@ export function noteToHtml(note: SermonNote, resolvedImages?: Record<string, str
         return `<h2 style="font-size:22px;font-weight:800;color:#182233;margin:26px 0 6px;">${escapeHtml(
           block.text
         )}</h2>`;
+      }
+      if (block.type === "quote" && block.text.trim()) {
+        return `<blockquote style="border-left:3px solid #1F3A5F;background:#F4F6F9;margin:16px 0;padding:12px 16px;border-radius:8px;font-style:italic;font-size:18px;color:#182233;">${escapeHtml(
+          block.text
+        )}</blockquote>`;
       }
       if (block.type === "verse") {
         const c = getHighlightColor(block.color);

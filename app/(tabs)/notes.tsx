@@ -19,12 +19,13 @@ function noteSearchText(note: SermonNote): string {
   return [
     note.title,
     note.church,
+    note.series,
     note.preacher,
     note.date,
     ...(note.tags ?? []),
     ...(note.blocks ?? []).map((b) => {
       if (!b) return "";
-      if (b.type === "text" || b.type === "heading") return b.text ?? "";
+      if (b.type === "text" || b.type === "heading" || b.type === "quote") return b.text ?? "";
       if (b.type === "verse") return `${b.reference ?? ""} ${b.text ?? ""}`;
       if (b.type === "audio") return b.transcript ?? "";
       if (b.type === "checklist") return (b.items ?? []).map((i) => i?.text ?? "").join(" ");
@@ -41,9 +42,19 @@ export default function NotesScreen() {
   const showAlert = useAlert();
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeSeries, setActiveSeries] = useState<string | null>(null);
   const colors = useColors();
   const textStyles = useTextStyles();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const allSeries = useMemo(() => {
+    const set = new Set<string>();
+    notes.forEach((n) => {
+      const s = n.series?.trim();
+      if (s) set.add(s);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [notes]);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -53,12 +64,17 @@ export default function NotesScreen() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return notes.filter((n) => {
+    const matching = notes.filter((n) => {
+      if (activeSeries && n.series?.trim() !== activeSeries) return false;
       if (activeTag && !(n.tags ?? []).includes(activeTag)) return false;
       if (!q) return true;
       return noteSearchText(n).includes(q);
     });
-  }, [notes, query, activeTag]);
+    return [...matching].sort((a, b) => {
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+      return 0;
+    });
+  }, [notes, query, activeTag, activeSeries]);
 
   function confirmDelete(id: string, title: string) {
     showAlert({
@@ -78,7 +94,7 @@ export default function NotesScreen() {
     });
   }
 
-  const isFiltering = query.trim().length > 0 || activeTag !== null;
+  const isFiltering = query.trim().length > 0 || activeTag !== null || activeSeries !== null;
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -128,23 +144,46 @@ export default function NotesScreen() {
           </View>
         ) : null}
 
-        {allTags.length > 0 ? (
+        {allSeries.length > 0 || allTags.length > 0 ? (
           <FlatList
             horizontal
-            data={allTags}
-            keyExtractor={(t) => t}
+            data={[
+              ...allSeries.map((s) => ({ kind: "series" as const, value: s })),
+              ...allTags.map((t) => ({ kind: "tag" as const, value: t })),
+            ]}
+            keyExtractor={(item) => `${item.kind}:${item.value}`}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.tagRow}
-            renderItem={({ item: tag }) => (
-              <Pressable
-                style={[styles.tagChip, activeTag === tag && styles.tagChipActive]}
-                onPress={() => setActiveTag((current) => (current === tag ? null : tag))}
-                accessibilityRole="button"
-                accessibilityLabel={activeTag === tag ? `Clear tag filter #${tag}` : `Filter by tag #${tag}`}
-              >
-                <Text style={[styles.tagChipText, activeTag === tag && styles.tagChipTextActive]}>#{tag}</Text>
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const isSeries = item.kind === "series";
+              const isActive = isSeries ? activeSeries === item.value : activeTag === item.value;
+              return (
+                <Pressable
+                  style={[styles.tagChip, isActive && styles.tagChipActive]}
+                  onPress={() => {
+                    if (isSeries) {
+                      setActiveSeries((current) => (current === item.value ? null : item.value));
+                    } else {
+                      setActiveTag((current) => (current === item.value ? null : item.value));
+                    }
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isSeries
+                      ? isActive
+                        ? `Clear series filter ${item.value}`
+                        : `Filter by series ${item.value}`
+                      : isActive
+                        ? `Clear tag filter #${item.value}`
+                        : `Filter by tag #${item.value}`
+                  }
+                >
+                  <Text style={[styles.tagChipText, isActive && styles.tagChipTextActive]}>
+                    {isSeries ? `Series: ${item.value}` : `#${item.value}`}
+                  </Text>
+                </Pressable>
+              );
+            }}
           />
         ) : null}
 
