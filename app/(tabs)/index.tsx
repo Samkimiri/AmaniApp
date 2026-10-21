@@ -311,7 +311,7 @@ export default function HomeScreen() {
           </PressableScale>
           <PressableScale
             style={styles.tile}
-            onPress={() => router.push("/note/new?template=soap")}
+            onPress={() => router.push("/soap")}
             accessibilityRole="button"
           >
             <View style={styles.tileIcon}>

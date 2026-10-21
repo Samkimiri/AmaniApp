@@ -1,8 +1,13 @@
 import {
   DEVOTIONALS,
+  DEVOTIONAL_CATEGORIES,
+  devotionalForDate,
   devotionalOfTheDay,
+  getAdjacentDevotional,
   getDevotional,
+  getRandomDevotional,
   resolvePassage,
+  searchDevotionals,
 } from "./devotionals";
 import { __setBibleDataForTests } from "./bible";
 import kjvFixture from "../../__fixtures__/kjvMini.json";
@@ -18,7 +23,7 @@ describe("devotionals", () => {
   });
 
   it("contains well-formed devotionals with intros, passages, reflection, and prayers", () => {
-    expect(DEVOTIONALS.length).toBeGreaterThan(5);
+    expect(DEVOTIONALS.length).toBeGreaterThanOrEqual(30);
     for (const d of DEVOTIONALS) {
       expect(d.id).toBeTruthy();
       expect(d.title).toBeTruthy();
@@ -27,6 +32,9 @@ describe("devotionals", () => {
       expect(d.passages.length).toBeGreaterThan(0);
       expect(d.reflection.length).toBeGreaterThan(0);
       expect(d.prayer).toBeTruthy();
+      if (d.category) {
+        expect(DEVOTIONAL_CATEGORIES).toContain(d.category);
+      }
     }
   });
 
@@ -46,12 +54,42 @@ describe("devotionals", () => {
     expect(getDevotional("non-existent")).toBeUndefined();
   });
 
-  it("returns a deterministic devotional of the day", () => {
+  it("returns a deterministic devotional of the day across timezones on the same date", () => {
     const dateA = new Date("2026-05-15T00:00:00Z");
     const dateB = new Date("2026-05-15T12:00:00Z");
     const d1 = devotionalOfTheDay(dateA);
     const d2 = devotionalOfTheDay(dateB);
     expect(d1.id).toBe(d2.id);
+
+    // Adjacent days return different devotionals
+    const dateNextDay = new Date("2026-05-16T00:00:00Z");
+    const dNext = devotionalForDate(dateNextDay);
+    expect(dNext).toBeDefined();
+  });
+
+  it("searches devotionals by keyword and category", () => {
+    const results = searchDevotionals("peace");
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some((r) => r.id === "peace")).toBe(true);
+
+    const peaceCategory = searchDevotionals("", "Peace & Comfort");
+    expect(peaceCategory.length).toBeGreaterThan(0);
+    expect(peaceCategory.every((r) => r.category === "Peace & Comfort")).toBe(true);
+  });
+
+  it("cycles to adjacent devotionals cleanly", () => {
+    const first = DEVOTIONALS[0];
+    const next = getAdjacentDevotional(first.id, "next");
+    expect(next.id).toBe(DEVOTIONALS[1].id);
+
+    const prev = getAdjacentDevotional(first.id, "prev");
+    expect(prev.id).toBe(DEVOTIONALS[DEVOTIONALS.length - 1].id);
+  });
+
+  it("gets a random devotional", () => {
+    const random = getRandomDevotional("faith");
+    expect(random).toBeDefined();
+    expect(random.id).not.toBe("faith");
   });
 
   it("resolves passages using the loaded Bible text", () => {

@@ -53,6 +53,7 @@ function Gate() {
         <Stack.Screen name="memorize" options={{ presentation: "card" }} />
         <Stack.Screen name="devotionals" options={{ presentation: "card" }} />
         <Stack.Screen name="devotional/[id]" options={{ presentation: "card" }} />
+        <Stack.Screen name="soap" options={{ presentation: "card" }} />
       </Stack>
       {enabled && locked ? <LockScreen onUnlock={unlock} /> : null}
     </>

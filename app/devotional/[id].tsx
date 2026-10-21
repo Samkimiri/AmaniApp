@@ -7,7 +7,7 @@ import { useColors, useShadows } from "@/context/ThemeContext";
 import { fontFamily } from "@/theme/typography";
 import { radius, Shadows } from "@/theme/tokens";
 import { ChevronLeftIcon, ChevronRightIcon, NotesIcon, OpenBookIcon } from "@/components/icons";
-import { getDevotional, resolvePassage } from "@/data/devotionals";
+import { getAdjacentDevotional, getDevotional, resolvePassage } from "@/data/devotionals";
 import { useActiveTranslation } from "@/data/bible";
 
 /** One topical devotional: intro → connected passages → reflection → prayer. */
@@ -28,6 +28,15 @@ export default function DevotionalScreen() {
 
   const related = useMemo(
     () => (devotional?.related ?? []).map((r) => getDevotional(r)).filter((d): d is NonNullable<typeof d> => !!d),
+    [devotional]
+  );
+
+  const nextDevotional = useMemo(
+    () => (devotional ? getAdjacentDevotional(devotional.id, "next") : null),
+    [devotional]
+  );
+  const prevDevotional = useMemo(
+    () => (devotional ? getAdjacentDevotional(devotional.id, "prev") : null),
     [devotional]
   );
 
@@ -55,9 +64,9 @@ export default function DevotionalScreen() {
     if (!devotional) return;
     const firstRef = passages[0]?.reference ?? "";
     router.push(
-      `/note/new?template=soap&initialTitle=${encodeURIComponent(
+      `/soap?devotionalId=${devotional.id}&initialTitle=${encodeURIComponent(
         `Devotional: ${devotional.title}`
-      )}&initialSeries=${encodeURIComponent("Devotionals")}&initialVerse=${encodeURIComponent(firstRef)}`
+      )}&initialVerse=${encodeURIComponent(firstRef)}`
     );
   }
 
@@ -78,7 +87,14 @@ export default function DevotionalScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.kicker}>Topical study</Text>
+        <View style={styles.topBadgeRow}>
+          <Text style={styles.kicker}>Topical study</Text>
+          {devotional.category ? (
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryBadgeText}>{devotional.category}</Text>
+            </View>
+          ) : null}
+        </View>
         <Text style={styles.title}>{devotional.title}</Text>
         <View style={styles.rule} />
         <Text style={styles.intro}>{devotional.intro}</Text>
@@ -162,6 +178,41 @@ export default function DevotionalScreen() {
             </View>
           </>
         ) : null}
+
+        <View style={styles.adjacentNavRow}>
+          {prevDevotional ? (
+            <Pressable
+              onPress={() => router.replace(`/devotional/${prevDevotional.id}`)}
+              style={styles.adjacentButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Previous topic: ${prevDevotional.title}`}
+            >
+              <ChevronLeftIcon size={16} color={colors.navy} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.adjacentLabel}>Previous</Text>
+                <Text style={styles.adjacentTitle} numberOfLines={1}>
+                  {prevDevotional.title}
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
+          {nextDevotional ? (
+            <Pressable
+              onPress={() => router.replace(`/devotional/${nextDevotional.id}`)}
+              style={[styles.adjacentButton, { alignItems: "flex-end" }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Next topic: ${nextDevotional.title}`}
+            >
+              <View style={{ flex: 1, alignItems: "flex-end" }}>
+                <Text style={styles.adjacentLabel}>Next</Text>
+                <Text style={styles.adjacentTitle} numberOfLines={1}>
+                  {nextDevotional.title}
+                </Text>
+              </View>
+              <ChevronRightIcon size={16} color={colors.navy} />
+            </Pressable>
+          ) : null}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -183,6 +234,54 @@ function makeStyles(colors: ColorPalette, shadows: Shadows) {
     headerButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     headerTitle: { fontFamily: fontFamily.serifBold, fontSize: 17, color: colors.textPrimary },
     content: { paddingHorizontal: 24, paddingBottom: 48, maxWidth: 680, width: "100%", alignSelf: "center" },
+    topBadgeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 6,
+    },
+    categoryBadge: {
+      backgroundColor: colors.verseBg,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    categoryBadgeText: {
+      fontFamily: fontFamily.sansBold,
+      fontSize: 10.5,
+      color: colors.verseText,
+    },
+    adjacentNavRow: {
+      flexDirection: "row",
+      gap: 12,
+      marginTop: 32,
+      paddingTop: 20,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    adjacentButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      padding: 12,
+    },
+    adjacentLabel: {
+      fontFamily: fontFamily.sansExtraBold,
+      fontSize: 9.5,
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+      color: colors.textMuted,
+    },
+    adjacentTitle: {
+      fontFamily: fontFamily.serifSemibold,
+      fontSize: 13.5,
+      color: colors.navy,
+    },
     kicker: {
       fontFamily: fontFamily.sansExtraBold,
       fontSize: 11,
